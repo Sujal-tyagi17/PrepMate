@@ -51,11 +51,11 @@ export default function AnalyticsPage() {
         mixed: "#f59e0b"
     };
     
-    const totalInterviewsForTypes = Object.values(analytics?.typeBreakdown || {}).reduce((a: any, b: any) => a + b, 0) || 1;
+    const totalInterviewsForTypes: number = Number(Object.values(analytics?.typeBreakdown || {}).reduce((a: number, b: number) => a + b, 0)) || 1;
     const typeData = analytics?.typeBreakdown
         ? Object.entries(analytics.typeBreakdown).map(([name, count]) => ({
             name: name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' '),
-            value: Math.round(((count as number) / totalInterviewsForTypes) * 100),
+            value: Math.round((Number(count) / totalInterviewsForTypes) * 100),
             color: typeColors[name] || "#6b7280"
         }))
         : [];
