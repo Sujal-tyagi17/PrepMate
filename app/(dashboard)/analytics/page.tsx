@@ -53,9 +53,9 @@ export default function AnalyticsPage() {
     
     const totalInterviewsForTypes = Object.values(analytics?.typeBreakdown || {}).reduce((a: any, b: any) => a + b, 0) || 1;
     const typeData = analytics?.typeBreakdown
-        ? Object.entries(analytics.typeBreakdown).map(([name, count]: [string, any]) => ({
+        ? Object.entries(analytics.typeBreakdown).map(([name, count]) => ({
             name: name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' '),
-            value: Math.round((count / totalInterviewsForTypes) * 100),
+            value: Math.round(((count as number) / totalInterviewsForTypes) * 100),
             color: typeColors[name] || "#6b7280"
         }))
         : [];
