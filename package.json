@@ -1,0 +1,50 @@
+{
+  "name": "prep-mate",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.38.2",
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.98.0",
+    "bcryptjs": "^2.4.3",
+    "class-variance-authority": "^0.7.0",
+    "cloudinary": "^2.9.0",
+    "clsx": "^2.1.0",
+    "framer-motion": "^12.34.3",
+    "groq-sdk": "^0.37.0",
+    "lucide-react": "^0.300.0",
+    "next": "^14.2.0",
+    "next-auth": "^4.24.0",
+    "openai": "^4.20.0",
+    "pdf-parse": "^1.1.4",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^2.15.4",
+    "resend": "^6.9.2",
+    "socket.io": "^4.7.0",
+    "socket.io-client": "^4.7.0",
+    "svix": "^1.86.0",
+    "tailwind-merge": "^2.2.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5"
+  }
+}
