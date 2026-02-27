@@ -23,11 +23,11 @@ export async function POST(
         }
 
         const body = await req.json();
-        const { question, answer } = body;
+        const { question, answer, skipped } = body;
 
-        if (!question || !answer || answer.trim() === "[No answer provided]") {
+        if (!question) {
             return NextResponse.json(
-                { error: "Question and valid answer are required" },
+                { error: "Question is required" },
                 { status: 400 }
             );
         }
@@ -47,6 +47,28 @@ export async function POST(
 
         if (interview.user_id !== user.id) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        // Skipped question — save with score 0, no AI evaluation needed
+        if (skipped || !answer || answer.trim() === "[No answer provided]") {
+            const { error: insertError } = await supabase
+                .from('answers')
+                .insert({
+                    interview_id: id,
+                    question_text: question,
+                    user_answer: "[No answer provided]",
+                    score: 0,
+                    feedback: "This question was skipped.",
+                    strengths: [],
+                    improvements: ["Answer all questions to receive complete feedback."],
+                });
+
+            if (insertError) {
+                console.error("Error inserting skipped answer:", insertError);
+                return NextResponse.json({ error: "Failed to save skipped question" }, { status: 500 });
+            }
+
+            return NextResponse.json({ success: true, skipped: true });
         }
 
         // Evaluate using Gemini (via lib/ai.ts)

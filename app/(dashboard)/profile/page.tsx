@@ -319,8 +319,23 @@ export default function ProfilePage() {
 
     const inputClass = "w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all placeholder-gray-600";
 
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center min-h-screen">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="relative w-12 h-12">
+                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin" />
+                        <div className="absolute inset-0 rounded-full border-2 border-fuchsia-500/10 border-b-fuchsia-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
+                    </div>
+                    <p className="text-white font-semibold text-sm">Loading...</p>
+                    <p className="text-gray-500 text-xs">Please wait</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-8 max-w-5xl relative">
+        <div className="px-10 py-8 max-w-7xl relative">
             {/* Sticky Save Button */}
             {section === "profile" && hasUnsavedChanges && (
                 <div className="fixed top-4 right-8 z-40 animate-slide-in">

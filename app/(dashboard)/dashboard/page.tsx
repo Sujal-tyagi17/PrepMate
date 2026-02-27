@@ -2,17 +2,25 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useState, useEffect } from "react";
-import { Sparkles, TrendingUp, Clock, Target, ArrowRight, Brain, BarChart2, Flame, Trophy, Zap, BookOpen } from "lucide-react";
+import { useState, useEffect, useTransition } from "react";
+import { Loader2, Sparkles, TrendingUp, Clock, Target, ArrowRight, Brain, BarChart2, Flame, Trophy, Zap, BookOpen } from "lucide-react";
 
 export default function DashboardPage() {
     const { user, isLoaded } = useUser();
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+    const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
     const [recentInterviews, setRecentInterviews] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const handleNav = (href: string) => {
+        setNavigatingTo(href);
+        startTransition(() => router.push(href));
+    };
     const [stats, setStats] = useState({ total: 0, avgScore: 0, streak: 0, hoursPracticed: 0, improvement: 0 });
     const [heatmapData, setHeatmapData] = useState<any[]>([]);
+    const [hoveredCell, setHoveredCell] = useState<{ date: string; count: number } | null>(null);
+    const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
     useEffect(() => {
         if (isLoaded) fetchData();
@@ -44,7 +52,7 @@ export default function DashboardPage() {
 
     if (!isLoaded || loading) {
         return (
-            <div className="p-8 max-w-6xl">
+            <div className="px-10 py-8 max-w-7xl">
                 {/* Skeleton Header */}
                 <div className="mb-10 animate-pulse">
                     <div className="h-4 w-32 bg-white/10 rounded mb-2"></div>
@@ -85,17 +93,35 @@ export default function DashboardPage() {
 
     // Achievement badges
     const badges = [
-        { icon: "🎯", label: "First Interview", earned: stats.total >= 1, color: "from-purple-500 to-fuchsia-500" },
-        { icon: "🔥", label: "5-Day Streak", earned: stats.streak >= 5, color: "from-purple-500 to-fuchsia-600" },
-        { icon: "⭐", label: "High Scorer", earned: avgScore >= 80, color: "from-fuchsia-500 to-purple-600" },
-        { icon: "🚀", label: "10 Sessions", earned: stats.total >= 10, color: "from-purple-600 to-fuchsia-500" },
+        { icon: "🎯", label: "First Interview", earned: stats.total >= 1,   color: "from-purple-500 to-fuchsia-500" },
+        { icon: "🔥", label: "5-Day Streak",    earned: stats.streak >= 5,  color: "from-orange-400 to-red-500" },
+        { icon: "⭐", label: "High Scorer",     earned: avgScore >= 80,     color: "from-fuchsia-500 to-purple-600" },
+        { icon: "🚀", label: "10 Sessions",     earned: stats.total >= 10,  color: "from-purple-600 to-fuchsia-500" },
+        { icon: "💎", label: "Elite Performer", earned: avgScore >= 90,     color: "from-cyan-500 to-blue-600" },
+        { icon: "⚡", label: "7-Day Streak",    earned: stats.streak >= 7,  color: "from-yellow-400 to-orange-500" },
     ];
 
     // Intensity colors for heatmap
     const intensityColors = ["bg-white/5", "bg-purple-500/25", "bg-purple-500/55", "bg-purple-500/90"];
 
     return (
-        <div className="p-8 max-w-6xl">
+        <div className="px-10 py-8 max-w-7xl">
+
+            {/* Navigation loading overlay */}
+            {navigatingTo && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0a0514]/80 backdrop-blur-sm">
+                    <div className="relative w-16 h-16 mb-5">
+                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-400 animate-spin" />
+                        <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-fuchsia-400 animate-spin [animation-duration:0.6s] [animation-direction:reverse]" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        </div>
+                    </div>
+                    <p className="text-base font-bold text-white">Loading...</p>
+                    <p className="text-sm text-gray-400 mt-1">Please wait</p>
+                </div>
+            )}
 
             {/* Header */}
             <div className="mb-10">
@@ -185,13 +211,13 @@ export default function DashboardPage() {
                         <p className="text-sm text-gray-400">Start a personalized AI mock interview in seconds</p>
                     </div>
                 </div>
-                <Link href="/interview/new"
+                <button onClick={() => handleNav("/interview/new")}
                     className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-semibold text-sm transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-[1.02] flex-shrink-0">
                     New Interview <ArrowRight className="w-4 h-4" />
-                </Link>
+                </button>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-6 mb-8">
+            <div className="grid lg:grid-cols-2 gap-6 mb-8 items-stretch">
                 {/* Achievement Badges */}
                 <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
                     <h2 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
@@ -199,13 +225,19 @@ export default function DashboardPage() {
                     </h2>
                     <div className="grid grid-cols-2 gap-3">
                         {badges.map((badge) => (
-                            <div key={badge.label} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${badge.earned ? "border-white/15 bg-white/5" : "border-white/5 bg-white/2 opacity-40"}`}>
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${badge.earned ? `bg-gradient-to-br ${badge.color}` : "bg-white/10"}`}>
+                            <div key={badge.label} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                                badge.earned ? "border-white/15 bg-white/5" : "border-white/5 bg-white/2 opacity-40"
+                            }`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
+                                    badge.earned ? `bg-gradient-to-br ${badge.color}` : "bg-white/10"
+                                }`}>
                                     {badge.icon}
                                 </div>
                                 <div>
                                     <p className="text-xs font-medium text-white">{badge.label}</p>
-                                    <p className={`text-xs ${badge.earned ? "text-fuchsia-400" : "text-gray-600"}`}>{badge.earned ? "Earned ✓" : "Locked"}</p>
+                                    <p className={`text-xs ${badge.earned ? "text-fuchsia-400" : "text-gray-600"}`}>
+                                        {badge.earned ? "Earned ✓" : "Locked"}
+                                    </p>
                                 </div>
                             </div>
                         ))}
@@ -213,34 +245,55 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Activity Heatmap */}
-                <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
+                <div className="rounded-2xl border border-white/8 bg-white/3 p-6 flex flex-col">
                     <h2 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
                         <Flame className="w-4 h-4 text-fuchsia-400" /> Activity (Last 7 Weeks)
                     </h2>
                     {heatmapData.length > 0 ? (
-                        <div className="flex items-start gap-1">
+                        <div className="flex-1 flex items-stretch gap-2 min-h-0 relative">
                             {Array.from({ length: 7 }, (_, week) => (
-                                <div key={week} className="flex flex-col gap-1">
+                                <div key={week} className="flex flex-col gap-2 flex-1">
                                     {Array.from({ length: 7 }, (_, day) => {
                                         const index = week * 7 + day;
-                                        if (index >= heatmapData.length) return null;
+                                        if (index >= heatmapData.length) return <div key={day} className="flex-1 rounded-md bg-white/3" />;
                                         const cell = heatmapData[index];
+                                        const dateStr = new Date(cell.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                                         return (
                                             <div key={day}
-                                                className={`w-6 h-6 rounded-sm ${intensityColors[cell.intensity]} hover:ring-1 hover:ring-purple-400/40 transition-all`}
-                                                title={`${new Date(cell.date).toLocaleDateString()}: ${cell.count} session${cell.count !== 1 ? 's' : ''}`}
+                                                className={`flex-1 rounded-md ${intensityColors[cell.intensity]} hover:ring-2 hover:ring-purple-400/60 hover:scale-105 transition-all cursor-pointer relative group`}
+                                                onMouseEnter={(e) => {
+                                                    setHoveredCell({ date: dateStr, count: cell.count });
+                                                    const rect = (e.target as HTMLElement).getBoundingClientRect();
+                                                    setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+                                                }}
+                                                onMouseLeave={() => { setHoveredCell(null); setTooltipPos(null); }}
                                             />
                                         );
                                     })}
                                 </div>
                             ))}
+                            {/* Custom tooltip */}
+                            {hoveredCell && tooltipPos && (
+                                <div
+                                    className="fixed z-50 pointer-events-none"
+                                    style={{ left: tooltipPos.x, top: tooltipPos.y - 8, transform: 'translate(-50%, -100%)' }}
+                                >
+                                    <div className="bg-[#1a0f2e] border border-purple-500/30 rounded-xl px-3 py-2 shadow-xl shadow-purple-900/40 text-center whitespace-nowrap">
+                                        <p className="text-[11px] font-semibold text-purple-300">{hoveredCell.date}</p>
+                                        <p className="text-[13px] font-bold text-white mt-0.5">
+                                            {hoveredCell.count === 0 ? 'No sessions' : `${hoveredCell.count} session${hoveredCell.count !== 1 ? 's' : ''}`}
+                                        </p>
+                                    </div>
+                                    <div className="w-2 h-2 bg-[#1a0f2e] border-r border-b border-purple-500/30 rotate-45 mx-auto -mt-1" />
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <div className="text-center py-8 text-gray-500 text-sm">
+                        <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
                             Complete interviews to see your activity
                         </div>
                     )}
-                    <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-2 mt-4">
                         <span className="text-xs text-gray-600">Less</span>
                         {intensityColors.map((c, i) => <div key={i} className={`w-4 h-4 rounded-sm ${c}`} />)}
                         <span className="text-xs text-gray-600">More</span>
@@ -251,9 +304,9 @@ export default function DashboardPage() {
             {/* Recent Interviews */}
             <div className="flex items-center justify-between mb-5">
                 <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
-                <Link href="/history" className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1">
+                <button onClick={() => handleNav("/history")} className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1">
                     View all <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                </button>
             </div>
 
             {loading ? (
@@ -264,15 +317,15 @@ export default function DashboardPage() {
                 <div className="rounded-2xl border border-white/8 bg-white/3 p-14 text-center">
                     <Brain className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                     <p className="text-gray-400 mb-6 text-base">No interviews yet — let&apos;s start your first one!</p>
-                    <Link href="/interview/new"
+                    <button onClick={() => handleNav("/interview/new")}
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white text-sm font-semibold hover:scale-[1.02] transition-all shadow-lg shadow-purple-500/25">
                         <Sparkles className="w-4 h-4" /> Start Your First Interview
-                    </Link>
+                    </button>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {recentInterviews.slice(0, 5).map((iv: any) => (
-                        <button key={iv.id} onClick={() => router.push(`/interview/${iv.id}/feedback`)}
+                        <button key={iv.id} onClick={() => handleNav(`/interview/${iv.id}/feedback`)}
                             className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl bg-white/3 border border-white/8 hover:border-purple-500/20 hover:bg-white/5 transition-all text-left group">
                             <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold"
                                 style={{
@@ -313,7 +366,7 @@ export default function DashboardPage() {
                     { href: "/profile", icon: Target, label: "Settings", desc: "Preferences", color: "text-purple-400", bg: "bg-purple-500/15" },
                     { href: "/interview/new", icon: Zap, label: "Quick Start", desc: "Mixed difficulty", color: "text-fuchsia-400", bg: "bg-fuchsia-500/15" },
                 ].map(({ href, icon: Icon, label, desc, color, bg }) => (
-                    <Link key={href} href={href} className="flex items-center gap-3 p-4 rounded-2xl border border-white/8 bg-white/3 hover:border-purple-500/20 hover:bg-white/5 transition-all group">
+                    <button key={href} onClick={() => handleNav(href)} className="flex items-center gap-3 p-4 rounded-2xl border border-white/8 bg-white/3 hover:border-purple-500/20 hover:bg-white/5 transition-all group text-left">
                         <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
                             <Icon className={`w-4 h-4 ${color}`} size={16} />
                         </div>
@@ -321,7 +374,7 @@ export default function DashboardPage() {
                             <p className="text-sm font-medium text-white">{label}</p>
                             <p className="text-xs text-gray-500">{desc}</p>
                         </div>
-                    </Link>
+                    </button>
                 ))}
             </div>
         </div>

@@ -82,9 +82,17 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen bg-[#0a0514]">
-                <div className="text-center">
-                    <div className="w-12 h-12 rounded-full border-2 border-purple-500 border-t-transparent animate-spin mx-auto mb-4" />
-                    <p className="text-gray-400 text-sm">Loading feedback...</p>
+                <div className="flex flex-col items-center">
+                    <div className="relative w-16 h-16 mb-5">
+                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-400 animate-spin" />
+                        <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-fuchsia-400 animate-spin [animation-duration:0.6s] [animation-direction:reverse]" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        </div>
+                    </div>
+                    <p className="text-base font-bold text-white">Loading...</p>
+                    <p className="text-sm text-gray-400 mt-1">Please wait</p>
                 </div>
             </div>
         );
@@ -169,10 +177,8 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                             <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
                         </div>
                     </div>
-                    <p className="text-sm font-medium text-white/80">
-                        Loading {navigatingTo === "/analytics" ? "Analytics" : navigatingTo === "/history" ? "History" : "Interview"}...
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">Please wait</p>
+                    <p className="text-base font-bold text-white">Loading...</p>
+                    <p className="text-sm text-gray-400 mt-1">Please wait</p>
                 </div>
             )}
 

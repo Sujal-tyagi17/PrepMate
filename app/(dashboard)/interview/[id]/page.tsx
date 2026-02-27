@@ -6,7 +6,6 @@ import { Brain, Send, Loader2, CheckCircle, Mic, MicOff, Clock, Zap, Target, Mes
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { formatDuration } from "@/lib/utils";
-import AIAvatar from "@/components/interview/AIAvatar";
 
 interface Message {
     role: "ai" | "user";
@@ -26,6 +25,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     const [generating, setGenerating] = useState(false);
     const [completed, setCompleted] = useState(false);
     const [micActive, setMicActive] = useState(false);
+    const [speechError, setSpeechError] = useState("");
+    const [endingInterview, setEndingInterview] = useState(false);
     const [startTime] = useState(Date.now());
     const [elapsedTime, setElapsedTime] = useState(0);
     const [userName, setUserName] = useState("");
@@ -38,6 +39,9 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     const synthRef = useRef<SpeechSynthesis | null>(null);
     const recognitionRef = useRef<any>(null);
     const questionTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const hasInitializedRef = useRef(false);
+    const [questionNumber, setQuestionNumber] = useState(0);
+    const questionNumberRef = useRef(0); // always-fresh copy for closures
 
     // Initialize speech synthesis and recognition
     useEffect(() => {
@@ -66,7 +70,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                     console.error('Speech recognition error:', event.error);
                     setIsListening(false);
                     if (event.error === 'no-speech') {
-                        toast.error('No speech detected. Please try again.');
+                        setSpeechError('No speech detected. Check your microphone or type your answer below.');
+                        setTimeout(() => setSpeechError(""), 5000);
                     }
                 };
                 
@@ -76,30 +81,6 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             }
         }
     }, []);
-
-    // Function to speak text
-    const speakText = (text: string) => {
-        if (!voiceEnabled || !synthRef.current) return;
-        
-        // Cancel any ongoing speech
-        synthRef.current.cancel();
-        
-        setIsSpeaking(true);
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        
-        // Try to use a female voice for more professional feel
-        const voices = synthRef.current.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'));
-        if (preferredVoice) utterance.voice = preferredVoice;
-        
-        synthRef.current.speak(utterance);
-    };
 
     // Toggle microphone
     const toggleMicrophone = () => {
@@ -127,15 +108,10 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         }
     };
 
-    // Derived stats - only count actual questions (not greeting/intro messages)
-    const actualQuestions = messages.filter(m => 
-        m.role === "ai" && 
-        !m.content.toLowerCase().startsWith("hello") && 
-        !m.content.toLowerCase().includes("welcome to your") &&
-        !m.content.toLowerCase().includes("i'm your ai interviewer")
-    );
-    const questionCount = actualQuestions.length - (currentQuestion ? 1 : 0); // Count answered questions only
-    const totalQuestions = interview?.total_questions || 5; // Use configured total or default to 5
+    // Derived stats — messages only hold completed Q+A pairs now (current question is separate)
+    const answeredCount = messages.filter(m => m.role === "user").length;
+    const questionCount = answeredCount; // answered questions
+    const totalQuestions = Math.min(interview?.total_questions || 5, 20); // cap at 20
     const scores = messages.filter(m => m.role === "user" && m.score !== undefined).map(m => m.score as number);
     const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) : 0;
     const confidence = Math.min(100, Math.max(0, avgScore + (Math.random() * 10 - 5)));
@@ -168,10 +144,14 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                             }
                         } else {
                             toast.error("Time's up! Question skipped - no answer provided.");
-                            // Skip to next question without submitting
+                            // Save skipped question text to DB before moving on
+                            const skippedQ = currentQuestion;
                             setAnswer("");
                             setCurrentQuestion("");
-                            setTimeout(() => generateQuestion(), 1500);
+                            setTimeout(async () => {
+                                await saveSkippedQuestion(skippedQ);
+                                generateQuestion();
+                            }, 1500);
                         }
                         return 0;
                     }
@@ -233,20 +213,26 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 });
                 
                 setMessages(loadedMessages);
+                // Track answered count for resumed interviews
+                setQuestionNumber(data.interview.answers.length);
+                questionNumberRef.current = data.interview.answers.length;
                 
                 if (data.interview.status === "completed") {
                     setCompleted(true);
                 } else if (data.interview.answers.length === 0) {
-                    // New interview - show greeting and intro, then generate first question
                     const firstName = data.interview.user?.name?.split(' ')[0] || "there";
                     const greeting = `Hello ${firstName}! Welcome to your AI-powered interview.`;
                     const intro = `I'm your AI interviewer for the ${data.interview.role || 'this'} position${data.interview.company ? ` at ${data.interview.company}` : ''}. This is a ${data.interview.difficulty} difficulty ${data.interview.type.replace('-', ' ')} interview. You'll have 2 minutes to answer each question. Take your time, speak clearly, and feel free to think through your responses. Let's begin with your first question!`;
-                    
-                    // Set both greeting and intro messages at once
+
+                    // Always show greeting/intro messages immediately (even on StrictMode remount)
                     setMessages([
                         { role: "ai", content: greeting },
                         { role: "ai", content: intro }
                     ]);
+
+                    // Guard only the voice+question-generation side (prevents double API calls)
+                    if (hasInitializedRef.current) return;
+                    hasInitializedRef.current = true;
                     
                     // Speak greeting and intro sequentially using speech events
                     if (voiceEnabled && synthRef.current) {
@@ -301,34 +287,88 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     };
 
     const generateQuestion = async () => {
+        // Stale-closure-safe cap: never exceed totalQuestions
+        if (questionNumberRef.current >= Math.min(interview?.total_questions || 5, 20)) {
+            await handleEndInterview();
+            return;
+        }
         setGenerating(true);
+        setSpeechError("");
+        // Stop mic before new question
+        if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch (_) {}
+        }
+        setIsListening(false);
         try {
             const response = await fetch(`/api/interview/${params.id}/question`, { method: "POST" });
             const data = await response.json();
             if (data.success) {
                 setCurrentQuestion(data.question);
-                setMessages(prev => [...prev, { role: "ai", content: data.question }]);
-                // Speak the question
-                speakText(data.question);
-                // Start timer for this question
-                setQuestionTimer(120); // 2 minutes
-                setTimerActive(true);
-                
-                // Auto-enable microphone after AI finishes speaking (voice-first approach)
-                setTimeout(() => {
-                    if (recognitionRef.current && !isListening) {
+                setQuestionNumber(prev => {
+                    const next = prev + 1;
+                    questionNumberRef.current = next;
+                    return next;
+                });
+                // Question added to messages together with the answer in handleSubmitAnswer
+                // Timer and mic start AFTER AI finishes reading (inside utterance.onend)
+
+                const startMicAndTimer = () => {
+                    setQuestionTimer(120);
+                    setTimerActive(true);
+                    if (recognitionRef.current) {
                         try {
                             recognitionRef.current.start();
                             setIsListening(true);
-                            toast.success('🎤 Microphone activated - Start speaking!', { duration: 3000 });
-                        } catch (error) {
-                            console.log('Microphone auto-start failed:', error);
-                        }
+                        } catch (e) { console.log('Mic auto-start failed', e); }
                     }
-                }, 3000); // Wait 3 seconds for AI to start speaking
+                };
+
+                // Speak the question fully, THEN start timer + mic
+                if (voiceEnabled && synthRef.current) {
+                    synthRef.current.cancel();
+                    setIsSpeaking(true);
+                    const utterance = new SpeechSynthesisUtterance(data.question);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
+                    const voices = synthRef.current.getVoices();
+                    const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'));
+                    if (preferredVoice) utterance.voice = preferredVoice;
+                    utterance.onend = () => { setIsSpeaking(false); startMicAndTimer(); };
+                    utterance.onerror = () => { setIsSpeaking(false); startMicAndTimer(); };
+                    synthRef.current.speak(utterance);
+                } else {
+                    // Voice off — start timer + mic immediately
+                    startMicAndTimer();
+                }
+            } else {
+                // API error — show toast
+                const msg = data.error || "Failed to generate question";
+                const isQuota = msg.toLowerCase().includes("quota");
+                toast.error(
+                    isQuota
+                        ? "⚠️ AI quota exceeded. Add GROQ_API_KEY to .env.local for unlimited free requests."
+                        : `Error: ${msg}`,
+                    { duration: 8000 }
+                );
             }
-        } catch (error) { console.error("Error generating question:", error); }
+        } catch (error) {
+            console.error("Error generating question:", error);
+            toast.error("Failed to reach the server. Check your connection.", { duration: 5000 });
+        }
         finally { setGenerating(false); }
+    };
+
+    // Save a skipped question to DB so it appears in feedback with the actual question text
+    const saveSkippedQuestion = async (question: string) => {
+        if (!question) return;
+        try {
+            await fetch(`/api/interview/${params.id}/evaluate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question, skipped: true }),
+            });
+        } catch (e) { console.error("Failed to save skipped question", e); }
     };
 
     const handleSubmitAnswer = async (e: React.FormEvent) => {
@@ -344,9 +384,11 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         // Check if answer is empty - skip evaluation if no answer provided
         const userAnswer = answer.trim();
         if (!userAnswer) {
-            toast.error("Please provide an answer before submitting");
+            setSpeechError("Please provide an answer before submitting.");
+            setTimeout(() => setSpeechError(""), 4000);
             return;
         }
+        setSpeechError("");
         
         // Stop listening if active
         if (isListening && recognitionRef.current) {
@@ -356,7 +398,12 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
         
         setSubmitting(true);
         setAnswer("");
-        setMessages(prev => [...prev, { role: "user", content: userAnswer }]);
+        // Add the completed Q+A pair to conversation history
+        setMessages(prev => [
+            ...prev,
+            { role: "ai", content: currentQuestion },
+            { role: "user", content: userAnswer },
+        ]);
         try {
             const response = await fetch(`/api/interview/${params.id}/evaluate`, {
                 method: "POST",
@@ -372,11 +419,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 });
                 setCurrentQuestion("");
                 
-                // Check if we've reached the target number of questions
-                const answeredQuestions = questionCount + 1; // +1 for the question we just answered
-                
-                // Auto-complete after reaching totalQuestions (usually 5-10)
-                if (answeredQuestions >= totalQuestions) {
+                // questionNumber was incremented when question was generated; check completion
+                if (questionNumber >= totalQuestions) {
                     toast.success("🎉 Interview complete! Generating your feedback...");
                     setTimeout(async () => {
                         await handleEndInterview();
@@ -390,6 +434,18 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     };
 
     const handleEndInterview = async () => {
+        // Show overlay immediately — stop everything
+        setEndingInterview(true);
+        setTimerActive(false);
+        if (questionTimerRef.current) clearInterval(questionTimerRef.current);
+        if (isListening && recognitionRef.current) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        }
+        if (synthRef.current) {
+            synthRef.current.cancel();
+            setIsSpeaking(false);
+        }
         try {
             const response = await fetch(`/api/interview/${params.id}`, {
                 method: "PATCH",
@@ -398,18 +454,28 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             });
             const data = await response.json();
             if (data.success) {
-                toast.success("Interview completed!");
                 router.push(`/interview/${params.id}/feedback`);
             }
-        } catch (error) { console.error("Error ending interview:", error); }
+        } catch (error) {
+            console.error("Error ending interview:", error);
+            setEndingInterview(false);
+        }
     };
 
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen bg-[#0a0514]">
-                <div className="text-center">
-                    <div className="w-12 h-12 rounded-full border-2 border-purple-500 border-t-transparent animate-spin mx-auto mb-4" />
-                    <p className="text-gray-400 text-sm">Loading your interview...</p>
+                <div className="flex flex-col items-center">
+                    <div className="relative w-16 h-16 mb-5">
+                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-400 animate-spin" />
+                        <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-fuchsia-400 animate-spin [animation-duration:0.6s] [animation-direction:reverse]" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        </div>
+                    </div>
+                    <p className="text-base font-bold text-white">Loading...</p>
+                    <p className="text-sm text-gray-400 mt-1">Please wait</p>
                 </div>
             </div>
         );
@@ -466,6 +532,22 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#0a0514]">
+
+            {/* End interview loading overlay */}
+            {endingInterview && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0a0514]/95 backdrop-blur-sm">
+                    <div className="relative w-16 h-16 mb-5">
+                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-400 animate-spin" />
+                        <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-fuchsia-400 animate-spin [animation-duration:0.6s] [animation-direction:reverse]" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        </div>
+                    </div>
+                    <p className="text-base font-bold text-white">Loading...</p>
+                    <p className="text-sm text-gray-400 mt-1">Generating your feedback report</p>
+                </div>
+            )}
 
             {/* ── LEFT — Insights Panel ── */}
             <aside className="w-64 flex-shrink-0 border-r border-white/5 flex flex-col py-5 px-4 overflow-y-auto"
@@ -529,7 +611,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="text-center">
-                            <div className="text-2xl font-bold text-purple-400">{currentQuestion ? questionCount + 1 : questionCount}</div>
+                            <div className="text-2xl font-bold text-purple-400">{questionNumber}</div>
                             <div className="text-xs text-gray-600">Current Question</div>
                         </div>
                         <div className="text-center">
@@ -562,7 +644,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                             style={{ width: `${Math.round(confidence)}%` }} />
                     </div>
                     <p className="text-xs text-gray-600 mt-2">
-                        {Math.round(confidence) >= 80 ? "Very confident" : Math.round(confidence) >= 60 ? "Good pace" : "Keep going!"}
+                        {Math.round(confidence) >= 80 ? "High confidence" : Math.round(confidence) >= 50 ? "Good pace" : scores.length === 0 ? "Answer questions to build" : "Keep elaborating on examples"}
                     </p>
                 </div>
 
@@ -572,7 +654,17 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                         <Target className="w-3.5 h-3.5 text-pink-400" />
                         <span className="text-xs text-gray-400">Avg Score</span>
                     </div>
-                    <div className="text-2xl font-bold grad-text">{avgScore > 0 ? `${avgScore}%` : "—"}</div>
+                    {avgScore > 0 ? (
+                        <>
+                            <div className="text-2xl font-bold grad-text">{avgScore}%</div>
+                            <div className="h-1.5 rounded-full bg-white/5 mt-2 overflow-hidden">
+                                <div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 transition-all"
+                                    style={{ width: `${avgScore}%` }} />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-sm text-gray-600 mt-1">Calculating...</div>
+                    )}
                     <p className="text-xs text-gray-600 mt-1">{questionCount} Q{questionCount !== 1 ? "s" : ""} answered</p>
                 </div>
 
@@ -612,9 +704,9 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                 
                 {/* End Interview */}
                 <div className="mt-auto">
-                    <button onClick={handleEndInterview}
-                        className="w-full py-2.5 rounded-xl border border-red-500/20 bg-red-500/8 text-red-400 text-xs font-medium hover:bg-red-500/15 transition-all duration-200 active:scale-95">
-                        End Interview
+                    <button onClick={handleEndInterview} disabled={endingInterview}
+                        className="w-full py-2.5 rounded-xl border border-red-500/20 bg-red-500/8 text-red-400 text-xs font-medium hover:bg-red-500/15 transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        {endingInterview ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Ending...</> : "End Interview"}
                     </button>
                 </div>
             </aside>
@@ -624,7 +716,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
 
                 {/* Top bar */}
                 <div className="border-b border-white/5 px-6 py-3 flex items-center justify-between flex-shrink-0">
-                    <Link href="/dashboard" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">
+                    <Link href="/dashboard" className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-200">
                         <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
                     </Link>
                     <div className="flex items-center gap-3">
@@ -641,257 +733,241 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                     </div>
                 </div>
 
-                {/* Messages */}
+                {/* Messages — scrollable conversation history */}
                 <div className="flex-1 overflow-y-auto px-6 py-6">
-                    {/* Show greeting/intro or center AI Avatar with current question */}
-                    {messages.length > 0 && (messages.length < 3 || !currentQuestion) ? (
-                        // Show conversation mode for greeting/intro
-                        <div className="space-y-5 max-w-2xl mx-auto">
-                            {messages.map((msg, i) => (
-                                <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                                    <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${msg.role === "ai"
-                                        ? "bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/20"
-                                        : "bg-white/10 text-gray-300"}`}>
-                                        {msg.role === "ai" ? <Volume2 className="w-5 h-5" /> : "U"}
+                    <div className="space-y-4 max-w-2xl mx-auto">
+                        {messages.length === 0 && !generating && !currentQuestion && (
+                            <div className="text-center py-16">
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="relative w-12 h-12">
+                                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-400 animate-spin" />
+                                        <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-fuchsia-400 animate-spin [animation-duration:0.6s] [animation-direction:reverse]" />
                                     </div>
-                                    <div className={`max-w-xl ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                                        <div className={`rounded-2xl px-5 py-4 text-sm leading-relaxed ${msg.role === "ai"
-                                            ? "bg-purple-500/10 border border-purple-500/20 text-gray-200"
-                                            : "bg-white/7 border border-white/10 text-gray-300"}`}>
-                                            {msg.content}
-                                        </div>
-                                    </div>
+                                    <p className="text-gray-500 text-sm">Preparing your interview...</p>
                                 </div>
-                            ))}
-                            {generating && (
-                                <div className="flex gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                        <Loader2 className="w-5 h-5 text-white animate-spin" />
-                                    </div>
-                                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl px-5 py-4">
-                                        <div className="flex gap-1.5">
-                                            {[0, 1, 2].map((i) => (
-                                                <div key={i} className="w-2 h-2 rounded-full bg-purple-400 animate-bounce"
-                                                    style={{ animationDelay: `${i * 0.15}s` }} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        // Center mode with AI Avatar and current question
-                        <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto">
-                            
-                            {/* AI Avatar */}
-                            <AIAvatar isSpeaking={isSpeaking} size="lg" voiceEnabled={voiceEnabled} />
-                            
-                            {/* AI Name */}
-                            <h2 className="text-xl font-bold grad-text mt-6 mb-2">AI Interviewer</h2>
-                            <p className="text-gray-500 text-xs mb-8">
-                                {interview?.company && `${interview.company} · `}
-                                {interview?.role || "Interview Assistant"}
-                            </p>
-                        
-                        {/* Current Question Display */}
-                        {messages.length === 0 && !generating ? (
-                            <div className="glass-card rounded-2xl p-8 max-w-xl">
-                                <p className="text-gray-400 text-sm">Preparing your personalized interview...</p>
-                                <p className="text-gray-600 text-xs mt-2">I'll speak each question to you</p>
                             </div>
-                        ) : generating ? (
-                            <div className="glass-card rounded-2xl p-8 max-w-xl border-2 border-purple-500/30">
-                                <div className="flex items-center justify-center gap-3 mb-3">
-                                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-                                    <span className="text-purple-400 text-sm font-medium">Generating next question...</span>
+                        )}
+                        {messages.map((msg, i) => (
+                            <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                                <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${msg.role === "ai"
+                                    ? "bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/20"
+                                    : "bg-white/10 text-gray-300"}`}>
+                                    {msg.role === "ai" ? <Volume2 className="w-4 h-4" /> : "U"}
                                 </div>
-                                <div className="flex gap-1.5 justify-center">
+                                <div className={`max-w-xl flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === "ai"
+                                        ? "bg-purple-500/10 border border-purple-500/20 text-gray-200"
+                                        : "bg-white/7 border border-white/10 text-gray-300"}`}>
+                                        {msg.content}
+                                    </div>
+                                    {msg.role === "user" && msg.score !== undefined && (
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                            msg.score >= 7 ? "text-green-400 bg-green-500/10" : msg.score >= 4 ? "text-yellow-400 bg-yellow-500/10" : "text-red-400 bg-red-500/10"
+                                        }`}>{msg.score}/10</span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {generating && (
+                            <div className="flex gap-3">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                                </div>
+                                <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl px-4 py-3 flex items-center gap-2">
                                     {[0, 1, 2].map((i) => (
                                         <div key={i} className="w-2 h-2 rounded-full bg-purple-400 animate-bounce"
                                             style={{ animationDelay: `${i * 0.15}s` }} />
                                     ))}
+                                    <span className="text-xs text-purple-400 ml-1">Generating question...</span>
                                 </div>
-                            </div>
-                        ) : currentQuestion ? (
-                            <div className="space-y-6 w-full">
-                                {/* Current Question */}
-                                <div className="glass-card rounded-2xl p-8 border-2 border-purple-500/30 bg-purple-500/5">
-                                    <div className="flex items-start gap-3 mb-4">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-600 flex items-center justify-center flex-shrink-0">
-                                            {voiceEnabled ? <Volume2 className="w-4 h-4 text-white" /> : <Brain className="w-4 h-4 text-white" />}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <p className="text-sm text-purple-400 font-semibold">Question {questionCount + 1} of {totalQuestions}</p>
-                                                {timerActive && (
-                                                    <div className={`flex items-center gap-1.5 text-xs font-medium ${
-                                                        questionTimer <= 30 ? 'text-red-400' : 
-                                                        questionTimer <= 60 ? 'text-yellow-400' : 
-                                                        'text-gray-500'
-                                                    }`}>
-                                                        <Clock className="w-3.5 h-3.5" />
-                                                        {Math.floor(questionTimer / 60)}:{(questionTimer % 60).toString().padStart(2, '0')}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <p className="text-gray-200 text-base leading-relaxed text-left">{currentQuestion}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    {voiceEnabled && !isSpeaking && (
-                                        <div className="flex flex-col items-center justify-center gap-2 mt-4 pt-4 border-t border-white/10">
-                                            <div className="flex items-center gap-2">
-                                                <Mic className="w-4 h-4 text-purple-400 animate-pulse" />
-                                                <span className="text-sm font-medium text-purple-400">🎤 Microphone will auto-start - Answer by voice</span>
-                                            </div>
-                                            <span className="text-xs text-gray-600">Your speech transcribes to text • Edit if needed • 2 min limit</span>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {/* Previous Q&A Summary */}
-                                {questionCount > 0 && (
-                                    <div className="text-xs text-gray-600">
-                                        <p>Answered: {questionCount} questions • Average score: {avgScore}%</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="glass-card rounded-2xl p-8 max-w-xl">
-                                <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
-                                <p className="text-gray-400 text-sm">No active question</p>
                             </div>
                         )}
-                        </div>
-                    )}
+                        <div ref={messagesEndRef} />
+                    </div>
                 </div>
 
                 {/* Input bar */}
-                <div className="border-t border-white/5 px-6 py-4 flex-shrink-0 bg-[#0a0514]/80 backdrop-blur-xl">
-                    {/* Only show input during actual questions, not during greeting/intro */}
-                    {messages.length >= 2 && currentQuestion ? (
+                <div className="border-t border-white/5 flex-shrink-0 bg-[#0a0514]/80 backdrop-blur-xl">
+                    {/* Current Question Card — pinned above input */}
+                    {currentQuestion && (
+                        <div className="px-6 pt-4">
+                            <div className="relative rounded-2xl border border-purple-500/25 bg-purple-500/5 backdrop-blur-sm overflow-hidden mb-3">
+                                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/60 to-transparent" />
+                                <div className="p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-semibold">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                                            Question {questionNumber} of {totalQuestions}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            {isSpeaking && (
+                                                <span className="inline-flex items-center gap-1.5 text-xs text-purple-300 animate-pulse">
+                                                    <Volume2 className="w-3.5 h-3.5" /> Reading aloud...
+                                                </span>
+                                            )}
+                                            {timerActive && (
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
+                                                    questionTimer <= 15 ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                                                    : questionTimer <= 45 ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                                                    : 'bg-white/5 border-white/10 text-gray-400'
+                                                }`}>
+                                                    <Clock className="w-3 h-3" />
+                                                    {Math.floor(questionTimer / 60)}:{(questionTimer % 60).toString().padStart(2, '0')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-white text-base font-semibold leading-relaxed mb-3">{currentQuestion}</p>
+                                    <div className="flex items-center gap-2 pt-2 border-t border-white/8">
+                                        {isSpeaking ? (
+                                            <><Volume2 className="w-3.5 h-3.5 text-purple-400 animate-pulse" /><span className="text-xs text-purple-400">Mic will activate automatically when AI finishes reading</span></>
+                                        ) : isListening ? (
+                                            <><Mic className="w-3.5 h-3.5 text-red-400" /><span className="text-xs text-red-300">🔴 Recording — speak your answer</span></>
+                                        ) : (
+                                            <><Mic className="w-3.5 h-3.5 text-purple-400" /><span className="text-xs text-purple-300">🎤 Mic ready — speak or type below</span></>
+                                        )}
+                                    </div>
+                                    {speechError && (
+                                        <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-xl bg-red-500/8 border border-red-500/20">
+                                            <MicOff className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                            <span className="text-xs text-red-300 leading-relaxed">{speechError}</span>
+                                        </div>
+                                    )}
+                                    {questionCount > 0 && (
+                                        <div className="flex items-center gap-2 mt-3">
+                                            <div className="flex gap-1">
+                                                {Array.from({ length: totalQuestions }).map((_, i) => (
+                                                    <div key={i} className={`h-1 w-5 rounded-full transition-all ${i < questionCount ? 'bg-purple-500' : i === questionCount ? 'bg-purple-500/40' : 'bg-white/10'}`} />
+                                                ))}
+                                            </div>
+                                            <span className="text-xs text-gray-600">{questionCount}/{totalQuestions} answered</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="px-6 py-4">
+                    {/* Only show input during actual questions */}
+                    {currentQuestion ? (
                         <>
                             <form onSubmit={handleSubmitAnswer} className="flex gap-3 items-end">
-                                <button 
-                                    type="button" 
+                                {/* Mic button */}
+                                <button
+                                    type="button"
                                     onClick={toggleMicrophone}
-                                    className={`flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-200 shadow-lg active:scale-90 ${
-                                        isListening 
-                                            ? "bg-gradient-to-br from-red-500 to-pink-600 border-2 border-red-400 text-white scale-110 shadow-red-500/50" 
-                                            : "bg-gradient-to-br from-purple-600 to-fuchsia-600 border-2 border-purple-400/50 text-white hover:scale-105 shadow-purple-500/30"
+                                    className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 shadow-lg active:scale-90 ${
+                                        isListening
+                                            ? "bg-gradient-to-br from-red-500 to-pink-600 border-2 border-red-400/60 text-white scale-105 shadow-red-500/40"
+                                            : "bg-gradient-to-br from-purple-600 to-fuchsia-600 border-2 border-purple-400/40 text-white hover:scale-105 shadow-purple-500/25"
                                     }`}
                                     disabled={submitting || generating || !currentQuestion}
                                 >
                                     {isListening ? (
-                                        <div className="relative">
-                                            <Mic className="w-7 h-7" />
-                                            <div className="absolute inset-0 animate-ping">
-                                                <Mic className="w-7 h-7 opacity-75" />
-                                            </div>
+                                        <div className="relative flex items-center justify-center">
+                                            <Mic className="w-6 h-6" />
+                                            <div className="absolute -inset-1 rounded-full border-2 border-red-400/50 animate-ping" />
                                         </div>
                                     ) : (
-                                        <Mic className="w-7 h-7" />
+                                        <Mic className="w-6 h-6" />
                                     )}
                                 </button>
+
+                                {/* Textarea + char count */}
                                 <div className="flex-1 relative">
                                     <textarea
                                         value={answer}
                                         onChange={(e) => {
                                             setAnswer(e.target.value);
-                                            // Stop speech when user starts typing
                                             if (synthRef.current && e.target.value.length > 0) {
                                                 synthRef.current.cancel();
                                                 setIsSpeaking(false);
                                             }
+                                            if (speechError) setSpeechError("");
                                         }}
-                                        onKeyDown={(e) => { 
-                                            if (e.key === "Enter" && !e.shiftKey && !submitting) { 
-                                                e.preventDefault(); 
-                                                // Stop listening when submitting
-                                                if (isListening && recognitionRef.current) {
-                                                    recognitionRef.current.stop();
-                                                }
-                                                handleSubmitAnswer(e as any); 
-                                            } 
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey && !submitting) {
+                                                e.preventDefault();
+                                                if (isListening && recognitionRef.current) recognitionRef.current.stop();
+                                                handleSubmitAnswer(e as any);
+                                            }
                                         }}
                                         placeholder={
-                                            isListening 
-                                                ? "🎤 Listening... Your voice is being transcribed here" 
-                                                : currentQuestion 
-                                                    ? "Click the microphone to speak (or type to edit transcription)" 
-                                                    : "Waiting for question..."
+                                            isListening
+                                                ? "🎤 Listening... speak your answer"
+                                                : "Click mic to speak, or type your answer here (Enter to submit)"
                                         }
-                                        className={`w-full px-4 py-3 rounded-xl bg-white/5 border text-white placeholder-gray-600 text-sm focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/15 transition-all resize-none ${
-                                            isListening ? "border-red-500/30 bg-red-500/5" : "border-white/10"
+                                        className={`w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none transition-all resize-none bg-white/5 ${
+                                            isListening
+                                                ? "border border-red-500/50 focus:border-red-400 focus:ring-2 focus:ring-red-500/15"
+                                                : "border border-white/10 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/10"
                                         }`}
                                         rows={2}
                                         disabled={submitting || generating || !currentQuestion}
                                     />
+                                    {/* Recording waveform */}
                                     {isListening && (
-                                        <div className="absolute bottom-2 right-2 flex gap-1">
-                                            {[0, 1, 2].map((i) => (
-                                                <div 
-                                                    key={i} 
-                                                    className="w-1 bg-red-400 rounded-full animate-pulse"
-                                                    style={{ 
-                                                        height: Math.random() * 12 + 8 + 'px',
-                                                        animationDelay: `${i * 0.15}s` 
-                                                    }} 
-                                                />
+                                        <div className="absolute bottom-3 right-3 flex items-end gap-0.5">
+                                            {[6, 12, 8, 14, 6].map((h, i) => (
+                                                <div key={i} className="w-1 bg-red-400 rounded-full animate-pulse"
+                                                    style={{ height: `${h}px`, animationDelay: `${i * 0.1}s` }} />
                                             ))}
                                         </div>
                                     )}
+                                    {/* Char count */}
+                                    {answer.length > 0 && (
+                                        <div className="absolute top-2 right-2 text-xs text-gray-600">
+                                            {answer.split(/\s+/).filter(Boolean).length}w
+                                        </div>
+                                    )}
                                 </div>
-                                <button 
+
+                                {/* Skip */}
+                                <button
                                     type="button"
-                                    onClick={() => {
-                                        setShowSkipModal(true);
-                                    }}
+                                    onClick={() => setShowSkipModal(true)}
                                     disabled={submitting || generating || !currentQuestion}
-                                    className="flex-shrink-0 px-5 h-11 rounded-xl bg-white/5 border border-white/10 text-gray-400 font-medium text-sm flex items-center justify-center hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed gap-2"
+                                    className="flex-shrink-0 px-4 h-12 rounded-xl bg-white/5 border border-white/10 text-gray-400 font-medium text-sm hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     Skip
                                 </button>
+
+                                {/* Submit */}
                                 <button type="submit"
-                                    disabled={submitting || generating || !currentQuestion}
-                                    className="flex-shrink-0 px-6 h-11 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium text-sm flex items-center justify-center hover:from-green-500 hover:to-emerald-500 transition-all duration-200 shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 gap-2">
+                                    disabled={submitting || generating || !currentQuestion || !answer.trim()}
+                                    className="flex-shrink-0 px-6 h-12 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold text-sm flex items-center justify-center hover:from-green-500 hover:to-emerald-500 transition-all duration-200 shadow-lg shadow-green-500/20 hover:shadow-green-500/35 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 gap-2">
                                     {submitting ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            Submitting...
-                                        </>
+                                        <><Loader2 className="w-4 h-4 animate-spin" />Analyzing...</>
                                     ) : (
-                                        <>
-                                            <Send className="w-4 h-4" />
-                                            Submit Answer
-                                        </>
+                                        <><Send className="w-4 h-4" />Submit</>
                                     )}
                                 </button>
                             </form>
-                            <div className="mt-3 text-center space-y-1">
-                                <p className={`text-sm font-medium ${
-                                    isListening ? "text-red-400" : "text-purple-400"
-                                }`}>
-                                    {isListening 
-                                        ? "🎤 Recording your voice..." 
-                                        : "🎙️ Use voice to answer (microphone auto-starts)"
-                                    }
+
+                            {/* Status hint */}
+                            <div className="mt-2.5 flex items-center justify-between px-1">
+                                <p className={`text-xs font-medium ${isListening ? "text-red-400" : "text-gray-600"}`}>
+                                    {isListening ? "🔴 Recording — click mic to stop" : "Enter to submit · Shift+Enter for new line"}
                                 </p>
-                                <p className="text-xs text-gray-600">
-                                    {isListening 
-                                        ? "Click mic button to stop • Speech is transcribed for editing" 
-                                        : "Voice transcribes to text • Edit if needed • Enter to submit"
-                                    }
+                                <p className="text-xs text-gray-700">
+                                    {answer.trim() ? `${answer.split(/\s+/).filter(Boolean).length} words` : "No answer yet"}
                                 </p>
                             </div>
                         </>
                     ) : (
-                        <div className="text-center py-3">
+                        <div className="text-center py-2">
                             <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
                                 {isSpeaking ? (
                                     <>
                                         <Volume2 className="w-4 h-4 animate-pulse" />
-                                        <span>AI is speaking...</span>
+                                        <span>AI is reading the question...</span>
+                                    </>
+                                ) : generating ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Generating question...</span>
                                     </>
                                 ) : (
                                     <>
@@ -902,6 +978,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                             </div>
                         </div>
                     )}
+                    </div>
                 </div>
             </div>
 
@@ -935,13 +1012,18 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                                     setShowSkipModal(false);
                                     setTimerActive(false);
                                     setAnswer("");
-                                    setCurrentQuestion("");
                                     if (isListening && recognitionRef.current) {
                                         recognitionRef.current.stop();
                                         setIsListening(false);
                                     }
                                     toast('Question skipped', { icon: '⏭️' });
-                                    setTimeout(() => generateQuestion(), 800);
+                                    // Save skipped question text to DB before moving on
+                                    const skippedQ = currentQuestion;
+                                    setCurrentQuestion("");
+                                    setTimeout(async () => {
+                                        await saveSkippedQuestion(skippedQ);
+                                        generateQuestion();
+                                    }, 800);
                                 }}
                                 className="flex-1 py-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm font-medium hover:bg-yellow-500/20 hover:border-yellow-500/50 transition-all"
                             >

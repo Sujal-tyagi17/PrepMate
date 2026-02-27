@@ -41,6 +41,7 @@ export default function NewInterviewPage() {
         resumeUrl: "",
         resumeText: "",
         resumeFileName: "",
+        numQuestions: 5,
     });
 
     const steps = ["Interview Type", "Upload Resume", "Company & Role", "Start"];
@@ -125,7 +126,7 @@ export default function NewInterviewPage() {
             const res = await fetch("/api/interview/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ ...formData, totalQuestions: formData.numQuestions }),
             });
             const data = await res.json();
             if (data.success) router.push(`/interview/${data.interview.id}`);
@@ -138,6 +139,23 @@ export default function NewInterviewPage() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-8">
+
+            {/* Full-screen loading overlay — appears instantly on Start Interview click */}
+            {loading && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0a0514]/80 backdrop-blur-sm">
+                    <div className="relative w-16 h-16 mb-5">
+                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-400 animate-spin" />
+                        <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-fuchsia-400 animate-spin [animation-duration:0.6s] [animation-direction:reverse]" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                        </div>
+                    </div>
+                    <p className="text-base font-bold text-white">Loading...</p>
+                    <p className="text-sm text-gray-400 mt-1">Please wait</p>
+                </div>
+            )}
+
             {/* Background glow */}
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-purple-600/8 blur-[160px] pointer-events-none" />
 
@@ -334,9 +352,34 @@ export default function NewInterviewPage() {
                                     value={formData.jobDescription}
                                     onChange={(e) => setFormData({ ...formData, jobDescription: e.target.value })}
                                     placeholder="Paste the job description here..."
-                                    rows={6}
+                                    rows={4}
                                     className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all resize-none"
                                 />
+                            </div>
+
+                            {/* Number of Questions Slider */}
+                            <div className="mt-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-sm font-medium text-gray-300">Number of Questions</label>
+                                    <span className="text-lg font-bold text-purple-400">{formData.numQuestions}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={3}
+                                    max={20}
+                                    step={1}
+                                    value={formData.numQuestions}
+                                    onChange={(e) => setFormData({ ...formData, numQuestions: Number(e.target.value) })}
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                                    style={{
+                                        background: `linear-gradient(to right, #a855f7 0%, #a855f7 ${((formData.numQuestions - 3) / 17) * 100}%, rgba(255,255,255,0.1) ${((formData.numQuestions - 3) / 17) * 100}%, rgba(255,255,255,0.1) 100%)`
+                                    }}
+                                />
+                                <div className="flex justify-between text-xs text-gray-600 mt-1.5">
+                                    <span>3 (Quick)</span>
+                                    <span>10 (Standard)</span>
+                                    <span>20 (Deep Dive)</span>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -390,6 +433,10 @@ export default function NewInterviewPage() {
                                         </span>
                                     </div>
                                 )}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-gray-500">Questions</span>
+                                    <span className="text-sm font-bold text-purple-400">{formData.numQuestions}</span>
+                                </div>
                             </div>
 
                             {error && <div className="mb-5 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">{error}</div>}

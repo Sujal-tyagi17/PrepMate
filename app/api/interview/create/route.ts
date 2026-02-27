@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         console.log("[CREATE INTERVIEW] Request body:", body);
         
-        const { type, difficulty, role, company, jobDescription, resumeUrl, resumeText } = body;
+        const { type, difficulty, role, company, jobDescription, resumeUrl, resumeText, totalQuestions } = body;
 
         if (!type || !difficulty) {
             return NextResponse.json(
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
                 job_description: jobDescription || null,
                 resume_url: resumeUrl || null,
                 resume_text: resumeText || null,
+                total_questions: totalQuestions || 5,
                 status: "in-progress",
             })
             .select()

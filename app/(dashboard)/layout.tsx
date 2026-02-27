@@ -170,10 +170,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </div>
                         </div>
                         {/* Label */}
-                        <p className="text-sm font-medium text-white/80">
-                            Loading {navItems.find(n => n.href === loadingHref)?.label ?? "page"}...
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">Please wait</p>
+                        <p className="text-base font-bold text-white">Loading...</p>
+                        <p className="text-sm text-gray-400 mt-1">Please wait</p>
                     </div>
                 )}
 

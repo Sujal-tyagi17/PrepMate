@@ -116,8 +116,23 @@ export default function HistoryPage() {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center min-h-screen">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="relative w-12 h-12">
+                        <div className="absolute inset-0 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin" />
+                        <div className="absolute inset-0 rounded-full border-2 border-fuchsia-500/10 border-b-fuchsia-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
+                    </div>
+                    <p className="text-white font-semibold text-sm">Loading...</p>
+                    <p className="text-gray-500 text-xs">Please wait</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-8 max-w-5xl">
+        <div className="px-10 py-8 max-w-7xl">
             <div className="mb-8">
                 <p className="text-xs font-semibold text-purple-400 tracking-widest uppercase mb-1">Your Sessions</p>
                 <h1 className="text-3xl font-bold text-white">Interview <span className="grad-text">History</span></h1>
