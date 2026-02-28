@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Spline_Sans } from "next/font/google";
 import "./globals.css";
+
+export const dynamic = 'force-dynamic';
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "react-hot-toast";
 import ThemeProvider from "@/components/providers/ThemeProvider";
