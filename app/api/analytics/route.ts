@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
             return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
         };
         const interviewDates = interviews
-            ?.map((iv: any) => toUTCDate(iv.completed_at)) // only use completed_at, never created_at
+            ?.map((iv: any) => toUTCDate(iv.completed_at || iv.started_at || iv.created_at))
             .filter(Boolean) as string[] || [];
         const uniqueDates = Array.from(new Set(interviewDates)).sort().reverse();
         
@@ -155,10 +155,10 @@ export async function GET(req: NextRequest) {
             typeBreakdown[iv.type] = (typeBreakdown[iv.type] || 0) + 1;
         });
 
-        // Send raw completed_at timestamps — heatmap is computed client-side
+        // Send raw timestamps — heatmap is computed client-side
         // so it uses the user's browser timezone, not the server's UTC timezone.
         const completedTimestamps = (interviews || [])
-            .map((iv: any) => iv.completed_at)
+            .map((iv: any) => iv.completed_at || iv.started_at || iv.created_at)
             .filter(Boolean) as string[];
 
         // Topic performance (from question categories if available)
