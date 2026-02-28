@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
                 job_description: jobDescription || null,
                 resume_url: resumeUrl || null,
                 resume_text: resumeText || null,
-                total_questions: totalQuestions || 5,
                 status: "in-progress",
             })
             .select()
