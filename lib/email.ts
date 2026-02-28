@@ -1,7 +1,5 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export interface EmailOptions {
     to: string;
     subject: string;
@@ -25,6 +23,9 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
             console.error('[EMAIL] FROM email not configured');
             return { success: false, error: 'FROM email not configured' };
         }
+
+        // Instantiate lazily so it only runs at request time, not build time
+        const resend = new Resend(process.env.RESEND_API_KEY);
 
         console.log('[EMAIL] Sending email to:', to, 'Subject:', subject);
 
