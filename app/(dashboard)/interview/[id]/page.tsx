@@ -23,6 +23,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
     const [submitting, setSubmitting] = useState(false);
     const [showSkipModal, setShowSkipModal] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [questionError, setQuestionError] = useState("");
     const [completed, setCompleted] = useState(false);
     const [micActive, setMicActive] = useState(false);
     const [speechError, setSpeechError] = useState("");
@@ -293,6 +294,7 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
             return;
         }
         setGenerating(true);
+        setQuestionError("");
         setSpeechError("");
         // Stop mic before new question
         if (recognitionRef.current) {
@@ -342,19 +344,19 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                     startMicAndTimer();
                 }
             } else {
-                // API error — show toast
                 const msg = data.error || "Failed to generate question";
                 const isQuota = msg.toLowerCase().includes("quota");
-                toast.error(
-                    isQuota
-                        ? "⚠️ AI quota exceeded. Add GROQ_API_KEY to .env.local for unlimited free requests."
-                        : `Error: ${msg}`,
-                    { duration: 8000 }
-                );
+                const displayMsg = isQuota
+                    ? "AI quota exceeded. Please add a GROQ_API_KEY in Vercel Environment Variables."
+                    : `Failed to generate question: ${msg}`;
+                setQuestionError(displayMsg);
+                toast.error(displayMsg, { duration: 8000 });
             }
         } catch (error) {
             console.error("Error generating question:", error);
-            toast.error("Failed to reach the server. Check your connection.", { duration: 5000 });
+            const msg = "Failed to reach the server. Check your connection and AI API keys in Vercel.";
+            setQuestionError(msg);
+            toast.error(msg, { duration: 5000 });
         }
         finally { setGenerating(false); }
     };
@@ -780,6 +782,23 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
                                             style={{ animationDelay: `${i * 0.15}s` }} />
                                     ))}
                                     <span className="text-xs text-purple-400 ml-1">Generating question...</span>
+                                </div>
+                            </div>
+                        )}
+                        {!generating && questionError && (
+                            <div className="flex gap-3">
+                                <div className="w-9 h-9 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-red-400 text-sm font-bold">!</span>
+                                </div>
+                                <div className="bg-red-500/10 border border-red-500/25 rounded-2xl px-4 py-3 flex flex-col gap-2 max-w-xl">
+                                    <p className="text-red-300 text-sm font-medium">⚠️ Question generation failed</p>
+                                    <p className="text-red-400/80 text-xs">{questionError}</p>
+                                    <button
+                                        onClick={() => { setQuestionError(""); generateQuestion(); }}
+                                        className="self-start mt-1 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-colors"
+                                    >
+                                        Retry
+                                    </button>
                                 </div>
                             </div>
                         )}
