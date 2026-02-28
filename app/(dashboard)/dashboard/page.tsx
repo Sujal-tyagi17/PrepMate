@@ -2,7 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import { Loader2, Sparkles, TrendingUp, Clock, Target, ArrowRight, Brain, BarChart2, Flame, Trophy, Zap, BookOpen } from "lucide-react";
 
 export default function DashboardPage() {
@@ -18,9 +18,24 @@ export default function DashboardPage() {
         startTransition(() => router.push(href));
     };
     const [stats, setStats] = useState({ total: 0, avgScore: 0, streak: 0, hoursPracticed: 0, improvement: 0 });
-    const [heatmapData, setHeatmapData] = useState<any[]>([]);
+    const [completedTimestamps, setCompletedTimestamps] = useState<string[]>([]);
     const [hoveredCell, setHoveredCell] = useState<{ date: string; count: number } | null>(null);
     const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+
+    // Compute heatmap client-side using browser local timezone (avoids UTC vs IST mismatch)
+    const heatmapData = useMemo(() => {
+        const localDates = completedTimestamps.map((ts) => new Date(ts).toLocaleDateString('en-CA'));
+        const result = [];
+        const now = new Date();
+        for (let i = 48; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(now.getDate() - i);
+            const dateStr = d.toLocaleDateString('en-CA');
+            const count = localDates.filter((ld) => ld === dateStr).length;
+            result.push({ date: dateStr, count, intensity: Math.min(3, count) });
+        }
+        return result;
+    }, [completedTimestamps]);
 
     useEffect(() => {
         if (isLoaded) fetchData();
@@ -40,11 +55,11 @@ export default function DashboardPage() {
                     total: data.analytics.totalInterviews || 0,
                     avgScore: Math.round(data.analytics.averageScore || 0),
                     streak: data.analytics.streak || 0,
-                    hoursPracticed: Math.round((data.analytics.totalMinutes || 0) / 60), // REAL hours from actual interview duration
+                    hoursPracticed: Math.round((data.analytics.totalMinutes || 0) / 60),
                     improvement: scores.length > 1 ? Math.round(lastScore - firstScore) : 0,
                 });
-                // Set REAL heatmap data from API
-                setHeatmapData(data.analytics.heatmapData || []);
+                // Use completedTimestamps — heatmap computed client-side
+                setCompletedTimestamps(data.analytics.completedTimestamps || []);
             }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
@@ -249,50 +264,45 @@ export default function DashboardPage() {
                     <h2 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
                         <Flame className="w-4 h-4 text-fuchsia-400" /> Activity (Last 7 Weeks)
                     </h2>
-                    {heatmapData.length > 0 ? (
-                        <div className="flex-1 flex items-stretch gap-2 min-h-0 relative">
-                            {Array.from({ length: 7 }, (_, week) => (
-                                <div key={week} className="flex flex-col gap-2 flex-1">
-                                    {Array.from({ length: 7 }, (_, day) => {
-                                        const index = week * 7 + day;
-                                        if (index >= heatmapData.length) return <div key={day} className="flex-1 rounded-md bg-white/3" />;
-                                        const cell = heatmapData[index];
-                                        const dateStr = new Date(cell.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                        return (
-                                            <div key={day}
-                                                className={`flex-1 rounded-md ${intensityColors[cell.intensity]} hover:ring-2 hover:ring-purple-400/60 hover:scale-105 transition-all cursor-pointer relative group`}
-                                                onMouseEnter={(e) => {
-                                                    setHoveredCell({ date: dateStr, count: cell.count });
-                                                    const rect = (e.target as HTMLElement).getBoundingClientRect();
-                                                    setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
-                                                }}
-                                                onMouseLeave={() => { setHoveredCell(null); setTooltipPos(null); }}
-                                            />
-                                        );
-                                    })}
+                    <div className="flex-1 flex items-stretch gap-2 min-h-0 relative">
+                        {Array.from({ length: 7 }, (_, week) => (
+                            <div key={week} className="flex flex-col gap-2 flex-1">
+                                {Array.from({ length: 7 }, (_, day) => {
+                                    const index = week * 7 + day;
+                                    if (index >= heatmapData.length) return <div key={day} className="flex-1 rounded-md bg-white/3" />;
+                                    const cell = heatmapData[index];
+                                    // Parse local date string at local noon to avoid UTC timezone shift
+                                    const dateStr = new Date(cell.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                    return (
+                                        <div key={day}
+                                            className={`flex-1 rounded-md ${intensityColors[cell.intensity]} hover:ring-2 hover:ring-purple-400/60 hover:scale-105 transition-all cursor-pointer relative group`}
+                                            onMouseEnter={(e) => {
+                                                setHoveredCell({ date: dateStr, count: cell.count });
+                                                const rect = (e.target as HTMLElement).getBoundingClientRect();
+                                                setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+                                            }}
+                                            onMouseLeave={() => { setHoveredCell(null); setTooltipPos(null); }}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        ))}
+                        {/* Custom tooltip */}
+                        {hoveredCell && tooltipPos && (
+                            <div
+                                className="fixed z-50 pointer-events-none"
+                                style={{ left: tooltipPos.x, top: tooltipPos.y - 8, transform: 'translate(-50%, -100%)' }}
+                            >
+                                <div className="bg-[#1a0f2e] border border-purple-500/30 rounded-xl px-3 py-2 shadow-xl shadow-purple-900/40 text-center whitespace-nowrap">
+                                    <p className="text-[11px] font-semibold text-purple-300">{hoveredCell.date}</p>
+                                    <p className="text-[13px] font-bold text-white mt-0.5">
+                                        {hoveredCell.count === 0 ? 'No sessions' : `${hoveredCell.count} session${hoveredCell.count !== 1 ? 's' : ''}`}
+                                    </p>
                                 </div>
-                            ))}
-                            {/* Custom tooltip */}
-                            {hoveredCell && tooltipPos && (
-                                <div
-                                    className="fixed z-50 pointer-events-none"
-                                    style={{ left: tooltipPos.x, top: tooltipPos.y - 8, transform: 'translate(-50%, -100%)' }}
-                                >
-                                    <div className="bg-[#1a0f2e] border border-purple-500/30 rounded-xl px-3 py-2 shadow-xl shadow-purple-900/40 text-center whitespace-nowrap">
-                                        <p className="text-[11px] font-semibold text-purple-300">{hoveredCell.date}</p>
-                                        <p className="text-[13px] font-bold text-white mt-0.5">
-                                            {hoveredCell.count === 0 ? 'No sessions' : `${hoveredCell.count} session${hoveredCell.count !== 1 ? 's' : ''}`}
-                                        </p>
-                                    </div>
-                                    <div className="w-2 h-2 bg-[#1a0f2e] border-r border-b border-purple-500/30 rotate-45 mx-auto -mt-1" />
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
-                            Complete interviews to see your activity
-                        </div>
-                    )}
+                                <div className="w-2 h-2 bg-[#1a0f2e] border-r border-b border-purple-500/30 rotate-45 mx-auto -mt-1" />
+                            </div>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2 mt-4">
                         <span className="text-xs text-gray-600">Less</span>
                         {intensityColors.map((c, i) => <div key={i} className={`w-4 h-4 rounded-sm ${c}`} />)}
