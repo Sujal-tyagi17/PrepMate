@@ -66,14 +66,21 @@ export async function GET(req: NextRequest) {
             : 0;
 
         // Calculate streak (consecutive days with interviews)
+        // Use UTC ISO date (YYYY-MM-DD) to avoid server timezone shifting dates
+        const toUTCDate = (ts: string | null): string | null => {
+            if (!ts) return null;
+            const d = new Date(ts);
+            return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+        };
         const interviewDates = interviews
-            ?.map((iv: any) => new Date(iv.completed_at || iv.created_at).toDateString())
-            .filter(Boolean) || [];
+            ?.map((iv: any) => toUTCDate(iv.completed_at)) // only use completed_at, never created_at
+            .filter(Boolean) as string[] || [];
         const uniqueDates = Array.from(new Set(interviewDates)).sort().reverse();
         
         let streak = 0;
-        const today = new Date().toDateString();
-        if (uniqueDates.includes(today) || (uniqueDates.length > 0 && uniqueDates[0] === new Date(Date.now() - 86400000).toDateString())) {
+        const todayUTC = toUTCDate(new Date().toISOString())!;
+        const yesterdayUTC = toUTCDate(new Date(Date.now() - 86400000).toISOString())!;
+        if (uniqueDates.includes(todayUTC) || (uniqueDates.length > 0 && uniqueDates[0] === yesterdayUTC)) {
             streak = 1;
             for (let i = 1; i < uniqueDates.length; i++) {
                 const prevDate = new Date(uniqueDates[i - 1]);
@@ -149,11 +156,11 @@ export async function GET(req: NextRequest) {
         });
 
         // Practice frequency heatmap (last 49 days)
+        // All dates in UTC ISO format (YYYY-MM-DD) to match interviewDates
         const heatmapData = [];
-        const now = Date.now();
+        const nowMs = Date.now();
         for (let i = 48; i >= 0; i--) {
-            const date = new Date(now - i * 86400000);
-            const dateStr = date.toDateString();
+            const dateStr = toUTCDate(new Date(nowMs - i * 86400000).toISOString())!;
             const count = interviewDates.filter((d: string) => d === dateStr).length;
             heatmapData.push({
                 date: dateStr,

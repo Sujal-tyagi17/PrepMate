@@ -231,7 +231,7 @@ export default function AnalyticsPage() {
                                                 onMouseEnter={(e) => {
                                                     const rect = e.currentTarget.getBoundingClientRect();
                                                     setHoveredCell({
-                                                        date: new Date(cell.date).toLocaleDateString('en-US', { 
+                                                        date: new Date(cell.date + 'T12:00:00Z').toLocaleDateString('en-US', { 
                                                             month: 'short', 
                                                             day: 'numeric', 
                                                             year: 'numeric' 
