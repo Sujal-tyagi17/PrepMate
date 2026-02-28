@@ -155,19 +155,11 @@ export async function GET(req: NextRequest) {
             typeBreakdown[iv.type] = (typeBreakdown[iv.type] || 0) + 1;
         });
 
-        // Practice frequency heatmap (last 49 days)
-        // All dates in UTC ISO format (YYYY-MM-DD) to match interviewDates
-        const heatmapData = [];
-        const nowMs = Date.now();
-        for (let i = 48; i >= 0; i--) {
-            const dateStr = toUTCDate(new Date(nowMs - i * 86400000).toISOString())!;
-            const count = interviewDates.filter((d: string) => d === dateStr).length;
-            heatmapData.push({
-                date: dateStr,
-                count,
-                intensity: Math.min(3, count) // 0-3 scale
-            });
-        }
+        // Send raw completed_at timestamps — heatmap is computed client-side
+        // so it uses the user's browser timezone, not the server's UTC timezone.
+        const completedTimestamps = (interviews || [])
+            .map((iv: any) => iv.completed_at)
+            .filter(Boolean) as string[];
 
         // Topic performance (from question categories if available)
         const topicScores: Record<string, { total: number; count: number }> = {};
@@ -200,7 +192,7 @@ export async function GET(req: NextRequest) {
                 categoryStats,
                 typeBreakdown,
                 topicPerformance,
-                heatmapData,
+                completedTimestamps,
                 performanceTrend,
                 topStrengths,
                 topImprovements,

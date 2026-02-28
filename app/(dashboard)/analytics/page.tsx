@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, Target, Brain, Clock, Award } from "lucide-react";
 
@@ -60,8 +60,25 @@ export default function AnalyticsPage() {
         }))
         : [];
 
-    // REAL practice frequency heatmap from API
-    const heatmapData = analytics?.heatmapData || [];
+    // Compute heatmap CLIENT-SIDE using browser local timezone (avoids UTC vs IST mismatch)
+    const heatmapData = useMemo(() => {
+        const timestamps: string[] = analytics?.completedTimestamps || [];
+        // Convert each timestamp to a local date string YYYY-MM-DD using the browser's timezone
+        const localDates = timestamps.map((ts) => {
+            const d = new Date(ts);
+            return d.toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD in local timezone
+        });
+        const result = [];
+        const now = new Date();
+        for (let i = 48; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(now.getDate() - i);
+            const dateStr = d.toLocaleDateString('en-CA');
+            const count = localDates.filter((ld) => ld === dateStr).length;
+            result.push({ date: dateStr, count, intensity: Math.min(3, count) });
+        }
+        return result;
+    }, [analytics?.completedTimestamps]);
 
     const statCards = [
         { label: "Total Sessions", value: analytics?.totalInterviews ?? 0, icon: Brain, color: "purple" },
@@ -231,7 +248,7 @@ export default function AnalyticsPage() {
                                                 onMouseEnter={(e) => {
                                                     const rect = e.currentTarget.getBoundingClientRect();
                                                     setHoveredCell({
-                                                        date: new Date(cell.date + 'T12:00:00Z').toLocaleDateString('en-US', { 
+                                                        date: new Date(cell.date + 'T12:00:00').toLocaleDateString('en-US', { 
                                                             month: 'short', 
                                                             day: 'numeric', 
                                                             year: 'numeric' 
