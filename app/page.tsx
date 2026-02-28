@@ -3,10 +3,26 @@
 import React from "react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { Play, Sparkles, Zap, Clock, BarChart2, Video, Building2 } from "lucide-react";
 
 export default function Home() {
     const [mounted, setMounted] = useState(false);
+    const { isSignedIn } = useAuth();
+    const router = useRouter();
+
+    const handleStartPractice = () => {
+        if (isSignedIn) {
+            router.push("/interview/new");
+        } else {
+            router.push("/sign-up");
+        }
+    };
+
+    const handleWatchDemo = () => {
+        document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -82,13 +98,13 @@ export default function Home() {
 
                     {/* CTA Buttons */}
                     <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 transition-all duration-700 delay-200 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
-                        <Link href="/sign-up" className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 font-semibold transition-all shadow-xl shadow-purple-500/30 hover:scale-105">
+                        <button onClick={handleStartPractice} className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 font-semibold transition-all shadow-xl shadow-purple-500/30 hover:scale-105">
                             Start Free Practice
                             <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                             </svg>
-                        </Link>
-                        <button className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-medium transition-all">
+                        </button>
+                        <button onClick={handleWatchDemo} className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 font-medium transition-all">
                             <Play className="w-5 h-5" />
                             Watch Demo
                         </button>
