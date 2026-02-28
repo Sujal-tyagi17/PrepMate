@@ -136,8 +136,8 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     const allImprovements = answers.flatMap((a: any) => a.improvements || []);
     
     // Remove duplicates and filter out empty values
-    const strengths = [...new Set(allStrengths)].filter(s => s && s.trim());
-    const improvements = [...new Set(allImprovements)].filter(i => i && i.trim());
+    const strengths = Array.from(new Set(allStrengths)).filter(s => s && s.trim());
+    const improvements = Array.from(new Set(allImprovements)).filter(i => i && i.trim());
     
     // Fallback if no AI feedback was generated yet
     if (strengths.length === 0) {

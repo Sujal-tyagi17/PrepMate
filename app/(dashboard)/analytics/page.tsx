@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
         mixed: "#f59e0b"
     };
     
-    const totalInterviewsForTypes: number = Number(Object.values(analytics?.typeBreakdown || {}).reduce((a: number, b: number) => a + b, 0)) || 1;
+    const totalInterviewsForTypes: number = Number((Object.values(analytics?.typeBreakdown || {}) as number[]).reduce((a: number, b: number) => a + b, 0)) || 1;
     const typeData = analytics?.typeBreakdown
         ? Object.entries(analytics.typeBreakdown).map(([name, count]) => ({
             name: name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' '),

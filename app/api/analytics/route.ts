@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
         const interviewDates = interviews
             ?.map((iv: any) => new Date(iv.completed_at || iv.created_at).toDateString())
             .filter(Boolean) || [];
-        const uniqueDates = [...new Set(interviewDates)].sort().reverse();
+        const uniqueDates = Array.from(new Set(interviewDates)).sort().reverse();
         
         let streak = 0;
         const today = new Date().toDateString();

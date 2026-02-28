@@ -82,7 +82,7 @@ export async function POST(req: Request) {
         }
 
         // Send welcome email (only in production with verified domain)
-        if (process.env.NODE_ENV === 'production' && notification_reminders) {
+        if (process.env.NODE_ENV === 'production') {
             try {
                 const welcomeEmail = emailTemplates.welcome(name);
                 await sendEmail({

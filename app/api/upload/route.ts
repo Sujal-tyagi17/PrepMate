@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
         const { url, publicId } = await uploadToCloudinary(dataUri, {
             folder: "prepmate/avatars",
-            publicId: `avatar_${user._id}`,
+            publicId: `avatar_${user.id}`,
         });
 
         return NextResponse.json({ success: true, url, publicId });
