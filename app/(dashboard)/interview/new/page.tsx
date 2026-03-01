@@ -41,7 +41,6 @@ export default function NewInterviewPage() {
         resumeUrl: "",
         resumeText: "",
         resumeFileName: "",
-        numQuestions: 5,
     });
 
     const steps = ["Interview Type", "Upload Resume", "Company & Role", "Start"];
@@ -126,7 +125,7 @@ export default function NewInterviewPage() {
             const res = await fetch("/api/interview/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...formData, totalQuestions: formData.numQuestions }),
+                body: JSON.stringify({ ...formData, totalQuestions: 5 }),
             });
             const data = await res.json();
             if (data.success) router.push(`/interview/${data.interview.id}`);
@@ -357,30 +356,7 @@ export default function NewInterviewPage() {
                                 />
                             </div>
 
-                            {/* Number of Questions Slider */}
-                            <div className="mt-5">
-                                <div className="flex items-center justify-between mb-3">
-                                    <label className="text-sm font-medium text-gray-300">Number of Questions</label>
-                                    <span className="text-lg font-bold text-purple-400">{formData.numQuestions}</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min={3}
-                                    max={20}
-                                    step={1}
-                                    value={formData.numQuestions}
-                                    onChange={(e) => setFormData({ ...formData, numQuestions: Number(e.target.value) })}
-                                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                                    style={{
-                                        background: `linear-gradient(to right, #a855f7 0%, #a855f7 ${((formData.numQuestions - 3) / 17) * 100}%, rgba(255,255,255,0.1) ${((formData.numQuestions - 3) / 17) * 100}%, rgba(255,255,255,0.1) 100%)`
-                                    }}
-                                />
-                                <div className="flex justify-between text-xs text-gray-600 mt-1.5">
-                                    <span>3 (Quick)</span>
-                                    <span>10 (Standard)</span>
-                                    <span>20 (Deep Dive)</span>
-                                </div>
-                            </div>
+
                         </div>
                     )}
 
@@ -433,10 +409,7 @@ export default function NewInterviewPage() {
                                         </span>
                                     </div>
                                 )}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-gray-500">Questions</span>
-                                    <span className="text-sm font-bold text-purple-400">{formData.numQuestions}</span>
-                                </div>
+
                             </div>
 
                             {error && <div className="mb-5 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">{error}</div>}

@@ -12,44 +12,9 @@ export interface EmailOptions {
  * @returns Promise with success status
  */
 export async function sendEmail({ to, subject, html }: EmailOptions) {
-    try {
-        // Validate environment variables
-        if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY.startsWith('re_placeholder')) {
-            console.error('[EMAIL] Resend API key not configured');
-            return { success: false, error: 'Email service not configured' };
-        }
-
-        if (!process.env.RESEND_FROM_EMAIL) {
-            console.error('[EMAIL] FROM email not configured');
-            return { success: false, error: 'FROM email not configured' };
-        }
-
-        // Instantiate lazily so it only runs at request time, not build time
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
-        console.log('[EMAIL] Sending email to:', to, 'Subject:', subject);
-
-        const { data, error } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL!,
-            to,
-            subject,
-            html,
-        });
-
-        if (error) {
-            console.error('[EMAIL] Resend API error:', error);
-            return { success: false, error: error.message };
-        }
-
-        console.log('[EMAIL] Email sent successfully:', data?.id);
-        return { success: true, data };
-    } catch (error) {
-        console.error('[EMAIL] Failed to send email:', error);
-        return { 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-        };
-    }
+    // Email notifications disabled — requires a verified custom domain on Resend.
+    // Re-enable by verifying a domain at resend.com/domains and updating RESEND_FROM_EMAIL.
+    return { success: false, error: 'Email notifications disabled' };
 }
 
 /**

@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 
 interface QuestionBreakdown {
-    question: string;
-    answer: string;
+    question_text: string;
+    user_answer: string;
     score: number;
     feedback?: string;
+    strengths?: string[];
+    improvements?: string[];
 }
 
 export default function FeedbackPage({ params }: { params: { id: string } }) {
@@ -103,9 +105,9 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     // Filter to only actually answered questions (exclude greeting, intro, unanswered, and "[No answer provided]")
     const allAnswers = interview.answers || [];
     const answers: QuestionBreakdown[] = allAnswers.filter((a: any) => 
-        a.userAnswer && 
-        a.userAnswer.trim().length > 0 && 
-        a.userAnswer !== "[No answer provided]"
+        a.user_answer && 
+        a.user_answer.trim().length > 0 && 
+        a.user_answer !== "[No answer provided]"
     );
     
     const totalQuestions = allAnswers.length;
@@ -158,7 +160,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
     }
 
     const avgWordCount = answers.length > 0
-        ? Math.round(answers.reduce((sum: number, a: any) => sum + (a.userAnswer?.split(" ").length || 0), 0) / answers.length)
+        ? Math.round(answers.reduce((sum: number, a: any) => sum + (a.user_answer?.split(" ").length || 0), 0) / answers.length)
         : 0;
 
     const percentile = finalScore >= 85 ? 92 : finalScore >= 70 ? 78 : finalScore >= 55 ? 55 : 30;
@@ -368,7 +370,7 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                     {[
                         { label: "Answered", value: `${answeredCount}/${totalQuestions}`, icon: MessageSquare, color: answeredCount === totalQuestions ? "text-emerald-400" : "text-orange-400" },
                         { label: "Avg Score", value: scores.length > 0 ? `${(scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(1)}/10` : "N/A", icon: Star, color: "text-yellow-400" },
-                        { label: "Avg Length", value: `${avgWordCount} words`, icon: Clock, color: "text-blue-400" },
+                        { label: "Avg Length", value: avgWordCount > 0 ? `${avgWordCount} words` : "N/A", icon: Clock, color: "text-blue-400" },
                         { label: "Percentile", value: `${percentile}th`, icon: Award, color: "text-emerald-400" },
                     ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className="rounded-2xl p-4 border border-white/8 bg-white/3 text-center">
@@ -488,11 +490,11 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                                                 </div>
                                                 <span className={`text-sm font-bold ${sc}`}>{s}/10</span>
                                             </div>
-                                            <p className="text-sm font-medium text-gray-300 mb-2">{a.questionText}</p>
+                                            <p className="text-sm font-medium text-gray-300 mb-2">{a.question_text}</p>
                                             <div className="h-px bg-white/5 mb-3" />
                                             <div className="mb-3">
                                                 <p className="text-xs text-gray-500 font-semibold mb-1">Your Answer:</p>
-                                                <p className="text-xs text-gray-400 italic leading-relaxed line-clamp-3">{a.userAnswer}</p>
+                                                <p className="text-xs text-gray-400 italic leading-relaxed line-clamp-3">{a.user_answer}</p>
                                             </div>
                                             {a.feedback && (
                                                 <div className="mb-3 p-3 rounded-lg bg-white/3 border border-white/5">
@@ -556,14 +558,14 @@ export default function FeedbackPage({ params }: { params: { id: string } }) {
                         </button>
                         {openSection === "unanswered" && (
                             <div className="space-y-3">
-                                {allAnswers.filter((a: any) => !a.userAnswer || a.userAnswer.trim().length === 0 || a.userAnswer === "[No answer provided]").map((a: any, i: number) => (
+                                {allAnswers.filter((a: any) => !a.user_answer || a.user_answer.trim().length === 0 || a.user_answer === "[No answer provided]").map((a: any, i: number) => (
                                     <div key={i} className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
                                         <div className="flex items-start gap-3 mb-3">
                                             <div className="w-6 h-6 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
                                                 <X className="w-3.5 h-3.5 text-orange-400" />
                                             </div>
                                             <div className="flex-1">
-                                                <p className="text-sm font-medium text-gray-300">{a.questionText || "Question not saved"}</p>
+                                                <p className="text-sm font-medium text-gray-300">{a.question_text || "Question not saved"}</p>
                                                 <p className="text-xs text-orange-400 mt-2">This question was not answered</p>
                                             </div>
                                         </div>
