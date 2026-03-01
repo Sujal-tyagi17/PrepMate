@@ -6,8 +6,17 @@ export const dynamic = 'force-dynamic';
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "react-hot-toast";
 import ThemeProvider from "@/components/providers/ThemeProvider";
+import PageLoader from "@/components/PageLoader";
+import ScrollProgress from "@/components/ScrollProgress";
+import ScrollToTop from "@/components/ScrollToTop";
 
-const splineSans = Spline_Sans({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
+const splineSans = Spline_Sans({
+    subsets: ["latin"],
+    weight: ["400", "600", "700"],
+    display: "swap",
+    preload: true,
+    variable: "--font-spline",
+});
 
 export const metadata: Metadata = {
     title: "PrepMate - AI Interview Preparation",
@@ -52,9 +61,12 @@ export default function RootLayout({
         >
             <html lang="en" suppressHydrationWarning>
                 <body className={splineSans.className} style={{ background: "#0a0514" }}>
+                    <ScrollProgress />
                     <ThemeProvider>
                         {children}
                     </ThemeProvider>
+                    <PageLoader />
+                    <ScrollToTop />
                     <Toaster
                         position="top-right"
                         toastOptions={{

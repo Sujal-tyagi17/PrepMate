@@ -20,31 +20,49 @@ export default function Navbar() {
     const { isSignedIn } = useAuth();
     const router = useRouter();
 
-    // Scroll shadow + clear active at top
+    // Single scroll listener: shadow + active section via position
     useEffect(() => {
-        const onScroll = () => {
-            setScrolled(window.scrollY > 10);
-            if (window.scrollY < 300) setActiveSection("");
-        };
-        window.addEventListener("scroll", onScroll, { passive: true });
-        return () => window.removeEventListener("scroll", onScroll);
-    }, []);
+        const NAVBAR_HEIGHT = 80;
 
-    // IntersectionObserver for active section
-    useEffect(() => {
-        const observers: IntersectionObserver[] = [];
-        NAV_LINKS.forEach(({ href }) => {
-            const id = href.replace("#", "");
-            const el = document.getElementById(id);
-            if (!el) return;
-            const obs = new IntersectionObserver(
-                ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
-                { threshold: 0.4 }
-            );
-            obs.observe(el);
-            observers.push(obs);
-        });
-        return () => observers.forEach((o) => o.disconnect());
+        const onScroll = () => {
+            const scrollY = window.scrollY;
+            setScrolled(scrollY > 10);
+
+            // Too close to top — nothing active
+            if (scrollY < 200) {
+                setActiveSection("");
+                return;
+            }
+
+            // Near bottom (footer) — nothing active
+            const nearBottom =
+                window.innerHeight + scrollY >= document.body.scrollHeight - 100;
+            if (nearBottom) {
+                setActiveSection("");
+                return;
+            }
+
+            // Find which section the viewport is currently inside
+            // A section is "active" when its top has passed the navbar and
+            // its bottom hasn't passed the middle of the viewport yet.
+            const viewportMid = scrollY + window.innerHeight / 2;
+            let current = "";
+            NAV_LINKS.forEach(({ href }) => {
+                const id = href.replace("#", "");
+                const el = document.getElementById(id);
+                if (!el) return;
+                const top = el.offsetTop - NAVBAR_HEIGHT - 20;
+                const bottom = top + el.offsetHeight;
+                if (viewportMid >= top && viewportMid < bottom) {
+                    current = id;
+                }
+            });
+            setActiveSection(current);
+        };
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        onScroll(); // run once on mount
+        return () => window.removeEventListener("scroll", onScroll);
     }, []);
 
     // Close drawer on resize to desktop
@@ -62,6 +80,7 @@ export default function Navbar() {
 
     const handleStart = () => {
         setMobileOpen(false);
+        window.dispatchEvent(new CustomEvent("pm:navstart"));
         router.push(isSignedIn ? "/interview/new" : "/sign-up");
     };
 
@@ -123,13 +142,13 @@ export default function Navbar() {
                                         {isActive && (
                                             <motion.span
                                                 layoutId="activeUnderline"
-                                                className="absolute bottom-1 left-1/2 -translate-x-1/2 h-[2px] w-[60%] bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
+                                                className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-4/5 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
                                             />
                                         )}
 
                                         {/* Hover underline (slides from center) */}
                                         {!isActive && (
-                                            <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-[2px] bg-gradient-to-r from-purple-400/60 to-fuchsia-400/60 rounded-full w-0 group-hover:w-[60%] transition-all duration-300" />
+                                            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-gradient-to-r from-purple-400/60 to-fuchsia-400/60 rounded-full w-0 group-hover:w-4/5 transition-all duration-300" />
                                         )}
                                     </button>
                                 );
@@ -138,12 +157,12 @@ export default function Navbar() {
 
                         {/* Desktop CTA */}
                         <div className="hidden md:flex items-center gap-3">
-                            <Link
-                                href="/sign-in"
+                            <button
+                                onClick={() => { window.dispatchEvent(new CustomEvent("pm:navstart")); router.push("/sign-in"); }}
                                 className="text-sm text-gray-400 hover:text-white px-4 py-2 rounded-lg hover:bg-white/5 transition-all duration-300"
                             >
                                 Login
-                            </Link>
+                            </button>
                             <motion.button
                                 onClick={handleStart}
                                 whileHover={{ scale: 1.05 }}
@@ -252,13 +271,12 @@ export default function Navbar() {
 
                             {/* Drawer footer */}
                             <div className="px-4 pb-8 space-y-3 border-t border-white/5 pt-4">
-                                <Link
-                                    href="/sign-in"
-                                    onClick={() => setMobileOpen(false)}
-                                    className="block text-center text-sm font-medium text-gray-300 hover:text-white px-4 py-3.5 rounded-xl border border-white/10 hover:bg-white/5 transition-all"
+                                <button
+                                    onClick={() => { setMobileOpen(false); window.dispatchEvent(new CustomEvent("pm:navstart")); router.push("/sign-in"); }}
+                                    className="block w-full text-center text-sm font-medium text-gray-300 hover:text-white px-4 py-3.5 rounded-xl border border-white/10 hover:bg-white/5 transition-all"
                                 >
                                     Login
-                                </Link>
+                                </button>
                                 <button
                                     onClick={handleStart}
                                     className="w-full text-sm font-semibold px-4 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg shadow-purple-500/30 hover:from-purple-500 hover:to-fuchsia-500 transition-all"

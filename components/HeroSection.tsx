@@ -39,26 +39,40 @@ function MockupCard() {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 60 }}
+            initial={{ opacity: 0, y: 80 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.7, ease: "easeOut" }}
-            className="relative max-w-4xl mx-auto mt-16 w-full"
-            style={{ perspective: "1400px" }}
+            transition={{ duration: 1, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-5xl mx-auto mt-20 px-4"
         >
             {/* Glow beneath */}
-            <div className="absolute -inset-8 bg-gradient-to-r from-purple-600/25 via-pink-500/15 to-cyan-500/15 blur-3xl rounded-3xl" />
+            <div className="absolute -inset-10 bg-gradient-to-r from-purple-600/30 via-pink-500/20 to-cyan-500/20 blur-3xl rounded-3xl pointer-events-none" />
 
-            {/* Tilt wrapper */}
+            {/* Float wrapper */}
             <motion.div
-                animate={shouldReduce ? {} : { rotateX: [-8, -6, -8], rotateY: [3, 5, 3] }}
-                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-                whileHover={shouldReduce ? {} : { rotateX: -4, rotateY: 6, scale: 1.01 }}
-                style={{
-                    transformStyle: "preserve-3d",
-                    boxShadow: "0 50px 100px -20px rgba(0,0,0,0.85), 0 0 60px rgba(168,85,247,0.12)",
-                }}
-                className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#100820]"
+                animate={shouldReduce ? {} : { y: [0, -14, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                style={{ perspective: "1600px" }}
             >
+                {/* Tilt wrapper */}
+                <motion.div
+                    animate={shouldReduce ? {} : { rotateX: [-6, -3, -6], rotateY: [-4, 4, -4] }}
+                    transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+                    whileHover={shouldReduce ? {} : { rotateX: -2, rotateY: 6, scale: 1.02, transition: { duration: 0.4 } }}
+                    style={{
+                        transformStyle: "preserve-3d",
+                        boxShadow: "0 60px 120px -20px rgba(0,0,0,0.9), 0 0 80px rgba(168,85,247,0.18)",
+                    }}
+                >
+                {/* ── Device bezel frame ── */}
+                <div
+                    className="rounded-[22px] p-[10px]"
+                    style={{
+                        background: "linear-gradient(145deg, #1e1530, #120d22, #0e0a1a)",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.2)",
+                    }}
+                >
+                {/* ── Inner card ── */}
+                <div className="relative rounded-[14px] overflow-hidden border border-white/[0.07] bg-[#100820]">
                 {/* ── Top bar ── */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
                     <div className="flex items-center gap-4">
@@ -151,7 +165,7 @@ function MockupCard() {
                     </div>
 
                     {/* Chat area */}
-                    <div className="flex-1 flex flex-col min-h-[380px]">
+                    <div className="flex-1 flex flex-col min-h-[520px]">
                         <div className="flex-1 p-6 space-y-4 overflow-hidden">
                             {/* AI message */}
                             <div className="flex gap-3 items-start">
@@ -210,6 +224,9 @@ function MockupCard() {
                         </div>
                     </div>
                 </div>
+                </div>{/* inner card */}
+                </div>{/* bezel frame */}
+            </motion.div>
             </motion.div>
         </motion.div>
     );
@@ -228,10 +245,11 @@ export default function HeroSection() {
 
     useEffect(() => {
         setMounted(true);
-        setParticles(generateParticles(25));
+        setParticles(generateParticles(14));
     }, []);
 
     const handleStartPractice = () => {
+        window.dispatchEvent(new CustomEvent("pm:navstart"));
         router.push(isSignedIn ? "/interview/new" : "/sign-up");
     };
 
@@ -379,16 +397,17 @@ export default function HeroSection() {
                         <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform duration-200" />
                     </motion.button>
 
-                    {/* Secondary */}
+                    {/* Watch Demo */}
                     <motion.button
                         onClick={handleWatchDemo}
-                        whileHover={shouldReduce ? {} : { scale: 1.04, boxShadow: "0 0 20px rgba(255,255,255,0.06)" }}
+                        whileHover={shouldReduce ? {} : { scale: 1.05 }}
                         whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                        className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm font-medium text-white hover:bg-white/10 transition-colors duration-200"
+                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-gray-300 border border-white/10 hover:border-purple-500/40 hover:text-white transition-colors duration-200"
                     >
-                        <Play className="w-5 h-5" />
+                        <Play className="w-4 h-4" />
                         Watch Demo
                     </motion.button>
+
                 </motion.div>
 
             </div>

@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&display=swap');
+/* Note: fonts loaded via next/font in layout.tsx — no @import needed */
 
 html {
   scroll-padding-top: 80px;

@@ -146,6 +146,7 @@ function Newsletter() {
                         </span>
                     ))}
                 </div>
+                <p className="mt-2 text-[10px] text-gray-700 opacity-60">🔒 100% privacy guaranteed — we never share your data.</p>
             </div>
         </div>
     );
@@ -164,7 +165,23 @@ function FooterLink({ label, href, badge }: { label: string; href: string; badge
         >
             {label}
             {badge && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 border border-purple-500/30 text-purple-300 leading-none">
+                <span
+                    className="px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none"
+                    style={{
+                        background: badge === "Soon"
+                            ? "rgba(139,92,246,0.15)"
+                            : badge === "Hiring!"
+                            ? "rgba(16,185,129,0.12)"
+                            : "rgba(139,92,246,0.15)",
+                        border: badge === "Soon"
+                            ? "1px solid rgba(139,92,246,0.4)"
+                            : badge === "Hiring!"
+                            ? "1px solid rgba(16,185,129,0.35)"
+                            : "1px solid rgba(139,92,246,0.4)",
+                        color: badge === "Soon" ? "#c4b5fd" : badge === "Hiring!" ? "#6ee7b7" : "#c4b5fd",
+                        boxShadow: badge === "Soon" ? "0 0 8px rgba(139,92,246,0.25)" : "none",
+                    }}
+                >
                     {badge}
                 </span>
             )}
@@ -282,10 +299,10 @@ export default function Footer() {
                         <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
                         <span>by</span>
                         <a
-                            href="https://github.com"
+                            href="https://linkedin.com/in/sujal-tyagi"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
+                            className="font-medium bg-gradient-to-r from-purple-400 to-fuchsia-400 bg-clip-text text-transparent hover:from-purple-300 hover:to-pink-300 transition-all duration-200"
                         >
                             Sujal Tyagi
                         </a>
