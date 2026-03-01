@@ -6,32 +6,17 @@ import { useAuth } from "@clerk/nextjs";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Play, Sparkles } from "lucide-react"; // Sparkles used in MockupCard
 
-/* ─── Particles ─────────────────────────────────────────────── */
-interface Particle {
-    id: number;
-    x: number;
-    y: number;
-    size: number;
-    color: string;
-    opacity: number;
-    delay: number;
-    duration: number;
-}
-
-const PARTICLE_COLORS = ["#A855F7", "#FF0080", "#00D9FF", "#C084FC", "#F472B6"];
-
-function generateParticles(count: number): Particle[] {
-    return Array.from({ length: count }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2 + 2,          // 2-4 px
-        color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-        opacity: Math.random() * 0.4 + 0.3,   // 0.3-0.7
-        delay: Math.random() * 5,
-        duration: Math.random() * 8 + 10,     // 10-18 s
-    }));
-}
+/* ─── Particles — CSS-based, no per-particle Framer loops ────── */
+const PARTICLES = [
+    { id:0,  x:8,  y:15, s:3, c:"#A855F7", o:0.5, d:0,   dur:12 },
+    { id:1,  x:22, y:72, s:2, c:"#FF0080", o:0.4, d:2.5, dur:14 },
+    { id:2,  x:45, y:30, s:4, c:"#00D9FF", o:0.35,d:1,   dur:11 },
+    { id:3,  x:68, y:55, s:2, c:"#C084FC", o:0.45,d:3.5, dur:15 },
+    { id:4,  x:82, y:20, s:3, c:"#F472B6", o:0.4, d:0.8, dur:13 },
+    { id:5,  x:15, y:85, s:2, c:"#A855F7", o:0.3, d:4,   dur:16 },
+    { id:6,  x:58, y:10, s:3, c:"#FF0080", o:0.5, d:1.8, dur:10 },
+    { id:7,  x:90, y:78, s:2, c:"#00D9FF", o:0.35,d:3,   dur:17 },
+];
 
 /* ─── 3D Mockup ──────────────────────────────────────────────── */
 function MockupCard() {
@@ -47,19 +32,16 @@ function MockupCard() {
             {/* Glow beneath */}
             <div className="absolute -inset-10 bg-gradient-to-r from-purple-600/30 via-pink-500/20 to-cyan-500/20 blur-3xl rounded-3xl pointer-events-none" />
 
-            {/* Float wrapper */}
-            <motion.div
-                animate={shouldReduce ? {} : { y: [0, -14, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                style={{ perspective: "1600px" }}
+            {/* Float wrapper — CSS animation, not Framer loop */}
+            <div
+                style={{
+                    animation: shouldReduce ? "none" : "hero-float 6s ease-in-out infinite",
+                    willChange: "transform",
+                }}
             >
-                {/* Tilt wrapper */}
-                <motion.div
-                    animate={shouldReduce ? {} : { rotateX: [-6, -3, -6], rotateY: [-4, 4, -4] }}
-                    transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-                    whileHover={shouldReduce ? {} : { rotateX: -2, rotateY: 6, scale: 1.02, transition: { duration: 0.4 } }}
+                {/* Static wrapper — removed expensive rotateX/rotateY loop */}
+                <div
                     style={{
-                        transformStyle: "preserve-3d",
                         boxShadow: "0 60px 120px -20px rgba(0,0,0,0.9), 0 0 80px rgba(168,85,247,0.18)",
                     }}
                 >
@@ -226,8 +208,8 @@ function MockupCard() {
                 </div>
                 </div>{/* inner card */}
                 </div>{/* bezel frame */}
-            </motion.div>
-            </motion.div>
+            </div>
+            </div>
         </motion.div>
     );
 }
@@ -238,14 +220,12 @@ const HEADLINE2_WORDS = ["with", "Your"];
 
 export default function HeroSection() {
     const [mounted, setMounted] = useState(false);
-    const [particles, setParticles] = useState<Particle[]>([]);
     const { isSignedIn } = useAuth();
     const router = useRouter();
     const shouldReduce = useReducedMotion();
 
     useEffect(() => {
         setMounted(true);
-        setParticles(generateParticles(14));
     }, []);
 
     const handleStartPractice = () => {
@@ -260,43 +240,54 @@ export default function HeroSection() {
     return (
         <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-x-hidden pt-32 pb-48">
 
-            {/* ── Animated gradient mesh background ── */}
-            <div className="absolute inset-0 pointer-events-none">
-                {/* Base blobs */}
-                <motion.div
-                    className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[700px] rounded-full opacity-30"
-                    style={{ background: "radial-gradient(ellipse, #A855F7 0%, transparent 70%)", filter: "blur(80px)" }}
-                    animate={shouldReduce ? {} : { scale: [1, 1.1, 1], opacity: [0.3, 0.4, 0.3] }}
-                    transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+            {/* ── Background blobs — pure CSS animations, zero JS overhead ── */}
+            <div className="absolute inset-0 pointer-events-none" aria-hidden>
+                <div
+                    className="absolute -top-40 left-1/2 w-[1000px] h-[700px] rounded-full"
+                    style={{
+                        background: "radial-gradient(ellipse, #A855F7 0%, transparent 70%)",
+                        filter: "blur(72px)",
+                        willChange: "transform, opacity",
+                        animation: shouldReduce ? "none" : "blob-pulse 15s ease-in-out infinite",
+                    }}
                 />
-                <motion.div
-                    className="absolute top-1/3 -left-32 w-[600px] h-[600px] rounded-full opacity-20"
-                    style={{ background: "radial-gradient(ellipse, #FF0080 0%, transparent 70%)", filter: "blur(80px)" }}
-                    animate={shouldReduce ? {} : { x: [0, 40, 0], y: [0, -20, 0], opacity: [0.2, 0.3, 0.2] }}
-                    transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+                <div
+                    className="absolute top-1/3 -left-32 w-[600px] h-[600px] rounded-full"
+                    style={{
+                        background: "radial-gradient(ellipse, #FF0080 0%, transparent 70%)",
+                        filter: "blur(72px)",
+                        opacity: 0.20,
+                        willChange: "transform, opacity",
+                        animation: shouldReduce ? "none" : "blob-drift-left 18s ease-in-out infinite",
+                    }}
                 />
-                <motion.div
-                    className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full opacity-15"
-                    style={{ background: "radial-gradient(ellipse, #00D9FF 0%, transparent 70%)", filter: "blur(80px)" }}
-                    animate={shouldReduce ? {} : { x: [0, -30, 0], y: [0, 20, 0], opacity: [0.15, 0.25, 0.15] }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+                <div
+                    className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full"
+                    style={{
+                        background: "radial-gradient(ellipse, #00D9FF 0%, transparent 70%)",
+                        filter: "blur(72px)",
+                        opacity: 0.15,
+                        willChange: "transform, opacity",
+                        animation: shouldReduce ? "none" : "blob-drift-right 20s ease-in-out infinite",
+                    }}
                 />
 
-                {/* Particles */}
-                {mounted && !shouldReduce && particles.map((p) => (
-                    <motion.div
+                {/* Particles — CSS animations, not Framer loops */}
+                {mounted && !shouldReduce && PARTICLES.map((p) => (
+                    <div
                         key={p.id}
-                        className="absolute rounded-full pointer-events-none"
+                        className="absolute rounded-full"
                         style={{
                             left: `${p.x}%`,
                             top: `${p.y}%`,
-                            width: p.size,
-                            height: p.size,
-                            backgroundColor: p.color,
-                            opacity: p.opacity,
+                            width: p.s,
+                            height: p.s,
+                            backgroundColor: p.c,
+                            ["--p-opacity" as string]: p.o,
+                            opacity: p.o,
+                            willChange: "transform, opacity",
+                            animation: `particle-float ${p.dur}s ease-in-out ${p.d}s infinite`,
                         }}
-                        animate={{ y: [0, -30, 0], opacity: [p.opacity, p.opacity * 0.5, p.opacity] }}
-                        transition={{ duration: p.duration, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}
                     />
                 ))}
             </div>
@@ -347,9 +338,8 @@ export default function HeroSection() {
                                     style={{
                                         backgroundImage: "linear-gradient(to right, #C084FC, #FF0080, #00D9FF, #A855F7)",
                                         backgroundSize: "200% auto",
+                                        animation: shouldReduce ? "none" : "gradient-pan 6s linear infinite",
                                     }}
-                                    animate={shouldReduce ? {} : { backgroundPosition: ["0% center", "200% center", "0% center"] }}
-                                    transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
                                 >
                                     AI Partner
                                 </motion.span>
@@ -388,10 +378,9 @@ export default function HeroSection() {
                         }}
                     >
                         {/* Pulse ring */}
-                        <motion.span
+                        <span
                             className="absolute inset-0 rounded-xl"
-                            animate={shouldReduce ? {} : { boxShadow: ["0 0 0px rgba(168,85,247,0.5)", "0 0 18px rgba(168,85,247,0.0)"] }}
-                            transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+                            style={{ animation: shouldReduce ? "none" : "pulse-ring 1.8s ease-out infinite" }}
                         />
                         <span className="relative z-10">Start Free Practice</span>
                         <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform duration-200" />
