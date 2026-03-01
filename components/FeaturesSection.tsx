@@ -127,8 +127,6 @@ function FeatureCard({
                     : {
                           y: -8,
                           scale: 1.03,
-                          rotateX: 2,
-                          rotateY: -2,
                           boxShadow: `0 24px 60px -12px ${feature.glow}, 0 0 0 1px ${feature.border}`,
                       }
             }
@@ -137,7 +135,7 @@ function FeatureCard({
                 transformStyle: "preserve-3d",
                 boxShadow: "0 4px 24px -8px rgba(0,0,0,0.4)",
             }}
-            className="group relative rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.07] p-8 cursor-default overflow-hidden"
+            className="group relative rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.07] p-5 sm:p-8 cursor-default overflow-hidden"
         >
             {/* Gradient border overlay on hover */}
             <motion.div
@@ -216,7 +214,7 @@ export default function FeaturesSection() {
     return (
         <section
             id="features"
-            className="relative py-28 px-6 overflow-hidden"
+            className="relative py-16 sm:py-28 px-4 sm:px-6 overflow-hidden"
         >
             {/* Background glow blobs */}
             <div className="absolute inset-0 pointer-events-none">
@@ -241,7 +239,7 @@ export default function FeaturesSection() {
             <div className="relative z-10 max-w-7xl mx-auto">
 
                 {/* ── Section header ── */}
-                <div className="text-center mb-20" ref={ref}>
+                <div className="text-center mb-12 sm:mb-20" ref={ref}>
                     <motion.div
                         initial={{ opacity: 0, y: 16 }}
                         animate={inView ? { opacity: 1, y: 0 } : {}}

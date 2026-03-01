@@ -238,7 +238,7 @@ export default function HeroSection() {
     };
 
     return (
-        <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-x-hidden pt-32 pb-48">
+        <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 overflow-x-hidden pt-24 sm:pt-32 pb-32 sm:pb-48">
 
             {/* ── Background blobs — pure CSS animations, zero JS overhead ── */}
             <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -297,7 +297,7 @@ export default function HeroSection() {
 
                 {/* Headline — word by word stagger */}
                 <div className="mb-6">
-                    <h1 className="text-6xl sm:text-7xl lg:text-8xl font-extrabold leading-[1.05] tracking-tight">
+                    <h1 className="text-4xl sm:text-6xl lg:text-8xl font-extrabold leading-[1.05] tracking-tight">
                         {/* Line 1 */}
                         <span className="block">
                             {HEADLINE_WORDS.map((word, i) => (
@@ -353,7 +353,7 @@ export default function HeroSection() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={mounted ? { opacity: 1, y: 0 } : {}}
                     transition={{ duration: 0.6, delay: 0.8, ease: "easeOut" }}
-                    className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10"
+                    className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10 px-2"
                 >
                     Unlock your career potential with real-time AI coaching, personalized mock
                     interviews, and actionable feedback that helps you stand out.
@@ -364,14 +364,14 @@ export default function HeroSection() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={mounted ? { opacity: 1, y: 0 } : {}}
                     transition={{ duration: 0.6, delay: 0.95, ease: "easeOut" }}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                    className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 w-full max-w-sm sm:max-w-none mx-auto"
                 >
                     {/* Primary */}
                     <motion.button
                         onClick={handleStartPractice}
                         whileHover={shouldReduce ? {} : { scale: 1.05 }}
                         whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                        className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-white overflow-hidden"
+                        className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 min-h-[52px] rounded-xl font-semibold text-white overflow-hidden w-full sm:w-auto"
                         style={{
                             background: "linear-gradient(135deg, #9333ea, #ec4899)",
                             boxShadow: "0 0 20px rgba(168,85,247,0.35), 0 4px 20px rgba(236,72,153,0.2)",
@@ -391,7 +391,7 @@ export default function HeroSection() {
                         onClick={handleWatchDemo}
                         whileHover={shouldReduce ? {} : { scale: 1.05 }}
                         whileTap={shouldReduce ? {} : { scale: 0.97 }}
-                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-gray-300 border border-white/10 hover:border-purple-500/40 hover:text-white transition-colors duration-200"
+                        className="inline-flex items-center justify-center gap-2 px-8 py-4 min-h-[52px] rounded-xl font-semibold text-gray-300 border border-white/10 hover:border-purple-500/40 hover:text-white transition-colors duration-200 w-full sm:w-auto"
                     >
                         <Play className="w-4 h-4" />
                         Watch Demo
@@ -402,7 +402,11 @@ export default function HeroSection() {
             </div>
 
             {/* ── 3D Mockup ── */}
-            {mounted && <MockupCard />}
+            {mounted && (
+                <div className="hidden xs:block sm:block w-full">
+                    <MockupCard />
+                </div>
+            )}
         </section>
     );
 }

@@ -1,0 +1,35 @@
+{
+  "version": "0.2",
+  "words": [
+    "prepmate",
+    "PrepMate",
+    "Supabase",
+    "supabase",
+    "SUPABASE",
+    "Groq",
+    "GROQ",
+    "Sujal",
+    "Tyagi",
+    "tyagi",
+    "Cloudinary",
+    "cloudinary",
+    "CLOUDINARY",
+    "Gemini",
+    "GEMINI",
+    "Clerk",
+    "nextjs",
+    "vercel",
+    "FAANG",
+    "navstart",
+    "scrolltop",
+    "Subheadline",
+    "practise",
+    "Personalised",
+    "Shouldn"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    ".next",
+    "*.lock"
+  ]
+}

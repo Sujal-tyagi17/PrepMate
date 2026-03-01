@@ -98,7 +98,7 @@ export default function Navbar() {
                         : "none",
                 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
                     <div className="flex items-center justify-between h-20">
 
                         {/* Logo */}
@@ -183,7 +183,7 @@ export default function Navbar() {
                         {/* Hamburger */}
                         <button
                             onClick={() => setMobileOpen((o) => !o)}
-                            className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-white"
+                            className="md:hidden flex items-center justify-center w-11 h-11 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-white"
                             aria-label="Toggle menu"
                         >
                             <AnimatePresence mode="wait" initial={false}>
@@ -257,7 +257,7 @@ export default function Navbar() {
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.05 }}
                                             onClick={() => scrollTo(href)}
-                                            className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                            className={`w-full text-left px-4 py-3.5 min-h-[48px] rounded-xl text-base font-medium transition-all duration-200 ${
                                                 isActive
                                                     ? "bg-purple-500/15 text-purple-300 border border-purple-500/25"
                                                     : "text-gray-300 hover:text-white hover:bg-white/5"
@@ -273,13 +273,13 @@ export default function Navbar() {
                             <div className="px-4 pb-8 space-y-3 border-t border-white/5 pt-4">
                                 <button
                                     onClick={() => { setMobileOpen(false); window.dispatchEvent(new CustomEvent("pm:navstart")); router.push("/sign-in"); }}
-                                    className="block w-full text-center text-sm font-medium text-gray-300 hover:text-white px-4 py-3.5 rounded-xl border border-white/10 hover:bg-white/5 transition-all"
+                                    className="block w-full text-center text-base font-medium text-gray-300 hover:text-white px-4 py-3.5 min-h-[48px] rounded-xl border border-white/10 hover:bg-white/5 transition-all"
                                 >
                                     Login
                                 </button>
                                 <button
                                     onClick={handleStart}
-                                    className="w-full text-sm font-semibold px-4 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg shadow-purple-500/30 hover:from-purple-500 hover:to-fuchsia-500 transition-all"
+                                    className="w-full text-base font-semibold px-4 py-3.5 min-h-[48px] rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-lg shadow-purple-500/30 hover:from-purple-500 hover:to-fuchsia-500 transition-all"
                                 >
                                     Start Free
                                 </button>

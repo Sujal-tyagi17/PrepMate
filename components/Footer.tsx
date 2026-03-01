@@ -92,7 +92,7 @@ function Newsletter() {
             <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full opacity-[0.07] pointer-events-none"
                 style={{ background: "radial-gradient(ellipse, #06b6d4, transparent 70%)", filter: "blur(40px)" }} />
 
-            <div className="relative z-10 px-8 py-10">
+            <div className="relative z-10 px-5 sm:px-8 py-7 sm:py-10">
                 {/* Icon + heading */}
                 <div className="flex items-center gap-3 mb-3">
                     <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center flex-shrink-0">
@@ -113,7 +113,7 @@ function Newsletter() {
                         <span>🎉</span> You&apos;re in! Check your inbox soon.
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="flex gap-2.5 max-w-md">
+                    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2.5 w-full sm:max-w-md">
                         <input
                             type="email"
                             value={email}
@@ -126,7 +126,7 @@ function Newsletter() {
                             type="submit"
                             whileHover={{ scale: 1.04, boxShadow: "0 0 20px rgba(139,92,246,0.45)" }}
                             whileTap={{ scale: 0.97 }}
-                            className="flex items-center gap-1.5 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 flex-shrink-0"
+                            className="flex items-center justify-center gap-1.5 px-5 py-3 min-h-[48px] rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 flex-shrink-0 w-full sm:w-auto"
                         >
                             Subscribe
                             <ArrowRight className="w-3.5 h-3.5" />
@@ -219,7 +219,7 @@ function SocialIcon({ href, icon: Icon, label, glow }: (typeof SOCIALS)[number])
             whileHover={{ scale: 1.15, boxShadow: `0 0 16px ${glow}50` }}
             whileTap={{ scale: 0.92 }}
             transition={{ duration: 0.18 }}
-            className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/[0.1] hover:border-white/20 transition-colors duration-200"
+            className="w-11 h-11 sm:w-9 sm:h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/[0.1] hover:border-white/20 transition-colors duration-200"
         >
             <Icon className="w-4 h-4" strokeWidth={1.75} />
         </motion.a>
@@ -243,7 +243,7 @@ export default function Footer() {
                     style={{ background: "radial-gradient(ellipse, #06b6d4, transparent 70%)", filter: "blur(60px)" }} />
             </div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-6">
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
 
                 {/* ── Newsletter ── */}
                 <div className="pt-14 pb-10 border-b border-white/[0.05]">

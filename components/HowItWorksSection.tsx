@@ -317,7 +317,7 @@ export default function HowItWorksSection() {
     const router = useRouter();
 
     return (
-        <section id="how-it-works" className="relative py-28 px-6 overflow-hidden">
+        <section id="how-it-works" className="relative py-16 sm:py-28 px-4 sm:px-6 overflow-hidden">
 
             {/* ── Background ── */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -398,7 +398,7 @@ export default function HowItWorksSection() {
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                                         {/* Text */}
-                                        <div className="flex flex-col justify-center p-8 lg:p-12">
+                                        <div className="flex flex-col justify-center p-5 sm:p-8 lg:p-12">
                                             <motion.div
                                                 initial={{ opacity: 0, x: -16 }}
                                                 animate={inView ? { opacity: 1, x: 0 } : {}}
@@ -421,12 +421,12 @@ export default function HowItWorksSection() {
                                                     initial={{ scale: 0, rotate: -20 }}
                                                     animate={inView ? { scale: 1, rotate: 0 } : {}}
                                                     transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.34 }}
-                                                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${step.gradient} flex items-center justify-center shadow-xl flex-shrink-0`}
+                                                    className={`w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${step.gradient} flex items-center justify-center shadow-xl flex-shrink-0`}
                                                     style={{ boxShadow: `0 8px 32px ${step.glowColor}40` }}
                                                 >
                                                     <Icon className="w-6 h-6 text-white" strokeWidth={1.75} />
                                                 </motion.div>
-                                                <span className="text-7xl font-black leading-none select-none"
+                                                <span className="text-5xl sm:text-7xl font-black leading-none select-none"
                                                     style={{ color: "transparent", WebkitTextStroke: `2px ${step.glowColor}CC` } as React.CSSProperties}>
                                                     {step.num}
                                                 </span>

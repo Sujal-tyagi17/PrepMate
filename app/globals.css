@@ -7,6 +7,17 @@
 html {
   scroll-padding-top: 80px;
   scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent horizontal overflow on all elements */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 /* ── Hero background blobs — CSS-only so they never block the JS thread ── */
